@@ -1,5 +1,5 @@
 from enum import Enum
 class Priority(Enum):
-    LOW = 1    
-    MEDIUM = 2
-    HIGH = 3
+    LOW = 1.0    
+    MEDIUM = 2.0
+    HIGH = 3.0
