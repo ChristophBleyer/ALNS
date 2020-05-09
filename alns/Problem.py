@@ -1,6 +1,7 @@
 import numpy as np
 import pandas
 import networkx as nx
+import matplotlib.pyplot as plt
 import json
 from alns.Vehicle import Vehicle
 from alns.TimeInterval import TimeInterval
@@ -29,7 +30,7 @@ class Problem:
     
     @property
     def depots(self):
-        return self._depot
+        return self._depots
     
     @property
     def demand(self):
@@ -176,7 +177,10 @@ class Problem:
 
 
     def calculcateMaxTravelTimeOccurences(self):
-        pass
+       customersOnly = self._timeMatrix[len(self.depots):,len(self.depots):]
+       sortedAsList = np.sort(customersOnly.ravel()).tolist()[0]
+       biggestTwo = sortedAsList[len(sortedAsList) - 2:]
+       return biggestTwo
     
     def calculateMaxServiceStartDistance(self):
         max = -1
@@ -191,12 +195,29 @@ class Problem:
                         max = temporalDistance
                 j+=1
             i+=1
-        print(max)
         return max
 
-
+    # /ENHANCEMENT/: Draw legend for colors dependend on priority.
     def plot(self):
-        pass
-
+        G = nx.Graph()
+        colors = []
+        labels = {}
+        for depot in self._depots:
+            G.add_node(depot.index, pos=(depot.lng, depot.lat))
+            colors.append('green')
+        
+        for stop in self._demand:
+            G.add_node(stop.index, pos=(stop.lng, stop.lat))
+            if(stop.priority == 1.0):
+                 colors.append('yellow')
+            elif (stop.priority == 2.0):
+                colors.append('orange')
+            else:
+                colors.append('red')
+        
+        nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
+        return G
 
 p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
+p.plot()
+plt.show()
