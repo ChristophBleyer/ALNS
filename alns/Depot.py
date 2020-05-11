@@ -26,3 +26,5 @@ class Depot(Node):
       for vehicle in self._vehicles:
             temporalWorkForce+= vehicle.maxOvertime
       return temporalWorkForce
+
+

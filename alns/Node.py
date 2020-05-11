@@ -66,6 +66,9 @@ class Node:
             self.schedule.departureTime =  self.schedule.arrivalTime + timeOnSite
         
         self.schedule.departureIncludesBreak = True
+ 
+
+
 
 
 

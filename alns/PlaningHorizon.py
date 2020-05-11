@@ -4,7 +4,7 @@ class PlanningHorizon:
         self._departureTime = departureTime
         self._waitingTime = waitingTime
         self._departureIncludesBreak = False
-        self._TravelIncludesBreak = False
+        self._travelIncludesBreak = False
 
     
     @property
@@ -24,5 +24,25 @@ class PlanningHorizon:
         return self._departureIncludesBreak
     
     @property
-    def TravelIncludesBreak(self):
-        return self._TravelIncludesBreak
+    def travelIncludesBreak(self):
+        return self._travelIncludesBreak
+    
+    @arrivalTime.setter
+    def arrivalTime(self, value):
+        self._arrivalTime = value
+    
+    @departureTime.setter
+    def departureTime(self, value):
+        self._departureTime = value
+    
+    @waitingTime.setter
+    def waitingTime(self, value):
+        self._waitingTime = value
+    
+    @departureIncludesBreak.setter
+    def departureIncludesBreak (self, value):
+        self._departureIncludesBreak = value
+    
+    @travelIncludesBreak.setter
+    def travelIncludesBreak(self, value):
+        self._travelIncludesBreak = value

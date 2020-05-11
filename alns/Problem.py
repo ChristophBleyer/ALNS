@@ -8,6 +8,7 @@ from alns.TimeInterval import TimeInterval
 from alns.Depot import Depot
 from alns.PlaningHorizon import PlanningHorizon
 from alns.ServiceStop import ServiceStop
+from alns.Route import Route
 
 class Problem:
 
@@ -79,8 +80,8 @@ class Problem:
         numStops = problemDescription[1]
         numDepots = problemDescription[2]
         lunchStart = problemDescription[3]
-        lunchEnd = problemDescription[3]
-        lunchDuration = problemDescription[4]
+        lunchEnd = problemDescription[4]
+        lunchDuration = problemDescription[5]
 
         lunchbreak = TimeInterval(lunchStart, lunchEnd)
 
@@ -124,6 +125,8 @@ class Problem:
             lat = depotDataRow[column]
             lng = depotDataRow[column + 1]
             row+=1
+            
+            # magic numbers: A depot can be visited any time across the 24 hour planning horzion.
             newDepot = Depot(nodeIndex, lat, lng, 0, PlanningHorizon(0,0,0), TimeInterval(0, 86400), vehicles)
             listOfDepots.append(newDepot)
             nodeIndex+=1
@@ -219,5 +222,25 @@ class Problem:
         return G
 
 p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
-p.plot()
-plt.show()
+# p.plot()
+# plt.show()
+
+r = Route(p, p.depots[3], p.fleet[3])
+
+result = r.tryInsertServiceStop(p.demand[0], 0)
+result = r.tryInsertServiceStop(p.demand[14], 1)
+result = r.tryInsertServiceStop(p.demand[11], 2)
+result = r.tryInsertServiceStop(p.demand[20], 3)
+result = r.tryInsertServiceStop(p.demand[12], 3)
+result = r.tryInsertServiceStop(p.demand[9], 3)
+result = r.tryInsertServiceStop(p.demand[13], 6)
+result = r.tryInsertServiceStop(p.demand[17], 7)
+
+print(p.demand[17].serviceTime.earliest, p.demand[17].serviceTime.latest)
+print("PAUSE BETWEEN: ", p.lunchBreak.earliest, " and ", p.lunchBreak.latest)
+print("PAUSE SIZE: ", p.lunchDuration)
+print("MAX OVERTIME: ", p.fleet[3].maxOvertime)
+
+print("INSERTION WORKS: ", result)
+r.stateLog()
+print()
