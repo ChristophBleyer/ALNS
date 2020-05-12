@@ -5,3 +5,5 @@ from .Skill import Skill
 from .Node import Node
 from .Vehicle import Vehicle
 from .TimeInterval import TimeInterval
+from .Route import Route
+from .Solution import Solution
