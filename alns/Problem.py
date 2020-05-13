@@ -9,6 +9,7 @@ from alns.Depot import Depot
 from alns.PlaningHorizon import PlanningHorizon
 from alns.ServiceStop import ServiceStop
 from alns.Route import Route
+from alns.TVRPAlgorithms import parallelUrgencyAssignment
 
 class Problem:
 
@@ -221,9 +222,11 @@ class Problem:
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
         return G
 
-# p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
+p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
 # p.plot()
 # plt.show()
+
+G = parallelUrgencyAssignment(p, True)
 
 # r = Route(p, p.depots[3], p.fleet[3])
 
@@ -248,3 +251,5 @@ class Problem:
 # print("INSERT DURATION:", p.demand[19].serviceDuration)
 # print("INSERT earliest:", p.demand[19].serviceTime.earliest)
 # print(r.getIntroducedDelay(1,2, p.demand[19]))
+
+
