@@ -70,6 +70,60 @@ class Route:
 
         return distanceTraveled
     
+
+    def isAssignable(self, newStop, index):
+        
+        # Constraint: Does this routes vehicle actually has what it takes ... ?
+        if (not self.vehicle.canServe(newStop)):
+            return False
+
+        # ... if so, lets try to build the route
+        seemsPossible, prototype, lunchRescedulingNeeded = self.tryGetNoLunchInsertionPrototype(index, newStop)
+
+        if (not seemsPossible):
+            print("BUMP Because of scheduling problem")
+            return False
+        
+        depotBreakDepartureBefore = self.depot.schedule.departureIncludesBreak
+        depotBreakTravelBefore = self.depot.schedule.travelIncludesBreak
+
+        # If there is only one node inside the Route, meaning we inserted the first one whe have to inject the pause. After that the serach takes care of it self.
+        # Also if the depot is the lunch target we will do a lookup
+        pauseAtDepotCanBeTakenAtTheEnd = prototype[len(prototype) - 1].schedule.departureTime + self.problem.timeMatrix[prototype[len(prototype) - 1].index, self.depot.index] <= self.problem.lunchBreak.latest
+        
+        if ((len(prototype) == 1) or (self.depot.schedule.departureIncludesBreak and not pauseAtDepotCanBeTakenAtTheEnd) or self.depot.schedule.travelIncludesBreak):
+            lunchRescedulingNeeded = True
+            self.depot.schedule.departureIncludesBreak = False
+            self.depot.schedule.travelIncludesBreak = False
+            
+            
+        # if the lunch was found somewhere across the planning horizon updates beginning at the new node, it has to be rescheduled
+        if(lunchRescedulingNeeded):
+            isPossible, pauseInjectedPrototype = self.tryInjectLunchBreak(prototype)
+        else:
+            isPossible = True
+            # we already have what we need
+            pauseInjectedPrototype = prototype
+        
+        if(not isPossible):
+            print("BUMP Because of lunch insersion problem")
+            self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
+            self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
+            return False
+        
+        workTime = self.calculateWorktime(pauseInjectedPrototype)
+
+        if (workTime > self.vehicle.maxOvertime):
+            print("BUMP Because of overtime problem")
+            self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
+            self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
+            return False
+        
+        return True
+
+
+
+
     
     def tryInsertServiceStop(self, newStop, index):
         
@@ -424,8 +478,15 @@ class Route:
     
     def getDistanceBasedInsertionCost(self, pred, succ,  newStop):
 
-        succ = self.stops[succ]
-        pred = self.stops[pred]
+        if(succ != -1):
+            succ = self.stops[succ]
+        else:
+            succ = self.depot
+
+        if(pred != -1):
+            pred = self.stops[pred]
+        else:
+            pred = self.depot
 
         predToNew = self.problem.distanceMatrix[pred.index, newStop.index]
         newToSucc = self.problem.distanceMatrix[newStop.index, succ.index]
@@ -440,8 +501,15 @@ class Route:
     
     def getTimeBasedInsertionCost(self, pred, succ,  newStop):
 
-        succ = self.stops[succ]
-        pred = self.stops[pred]
+        if(succ != -1):
+            succ = self.stops[succ]
+        else:
+            succ = self.depot
+
+        if(pred != -1):
+            pred = self.stops[pred]
+        else:
+            pred = self.depot
 
         predToNew = self.problem.timeMatrix[pred.index, newStop.index]
         newToSucc = self.problem.timeMatrix[newStop.index, succ.index]
@@ -455,16 +523,25 @@ class Route:
         return cost
     
     def getIntroducedDelay(self, pred, succ, newStop):
+
+        # if we insert the last node in the route we do not have any delay. Because the depot is not a customer. 
+        if(succ == -1):
+            return 0
         
         succ = self.stops[succ]
-        pred = self.stops[pred]
+
+        if(pred != -1):
+            pred = self.stops[pred]
 
         currentServiceAtSucc = succ.schedule.arrivalTime
         
-        
-        arrivalAtNewStop = pred.schedule.departureTime + self.problem.timeMatrix[pred.index, newStop.index]
+        if(pred != -1):
+            arrivalAtNewStop = pred.schedule.departureTime + self.problem.timeMatrix[pred.index, newStop.index]
+        # the arrival at the first stop, if the predecessor is a depot, is always the ealiest service time
+        else:
+            arrivalAtNewStop = newStop.serviceTime.earliest
 
-        # do we  wait at newStop?
+        # do we wait at newStop?
         if (arrivalAtNewStop < newStop.serviceTime.earliest):
             waitAtNewStop = newStop.serviceTime.earliest - arrivalAtNewStop
         else:

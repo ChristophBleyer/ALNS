@@ -1,29 +1,29 @@
 import numpy as np
-from alns.Solution import Solution
-from alns.Problem import Problem
-from alns.Depot import Depot
-from alns.Vehicle import Vehicle
 import networkx as nx
 import matplotlib.pyplot as plt
+from alns.Solution import Solution
+from alns.Route import Route
 
 def _closeness(customer, depot, problem):
     distance = problem.distanceMatrix[customer.index, depot.index] + problem.distanceMatrix[depot.index, customer.index]
     affinity = _aysmmetricTansiniAffinity(customer,depot, problem)
-    return distance/affinity
+    return distance
 
 def _aysmmetricTansiniAffinity(serviceStop, depot, problem):
     nodesInCluster = list(depot.clusterCache)
     nodesInCluster.append(depot)
-
+    longestTwoTravelTimes = problem.maxTravelTimeOccurences
+    
     sum = 0
     for clusterNode in nodesInCluster:
-        timeMsr = _tansiniDTW(serviceStop, clusterNode) + problem.timeMatrix[serviceStop.index, clusterNode.index] + problem.timeMatrix[clusterNode.index + serviceStop.index]
-        sum+= np.exp(-timeMsr)
+        timeMsr = tansiniDTW(serviceStop, clusterNode) + problem.timeMatrix[serviceStop.index, clusterNode.index] + problem.timeMatrix[clusterNode.index, serviceStop.index]
+        normalizedTimeMsr = timeMsr/(longestTwoTravelTimes[0] + longestTwoTravelTimes[1] + problem.maxTimeWindowDistance)
+        sum+= np.exp(-normalizedTimeMsr)
 
     return (sum/len(problem.demand))
 
 
-def _tansiniDTW(nodei, nodej):
+def tansiniDTW(nodei, nodej):
 
     if(nodei.serviceTime.latest < nodej.serviceTime.earliest):
         return nodej.serviceTime.earliest - nodei.serviceTime.latest
@@ -34,26 +34,24 @@ def _tansiniDTW(nodei, nodej):
 
 
 
-def _urgency(customer, firstDep, secDep):
+def _urgency(customer, firstDep, secDep, problem):
 
     if(secDep is not None):
-        urgency = _closeness(customer, secDep) - _closeness(customer, firstDep)
+        urgency = _closeness(customer, secDep, problem) - _closeness(customer, firstDep, problem)
     else:
         urgency = np.Infinity
     
-    if(urgency < 0):
-        raise Exception("impossible system state")
-    
-    return urgency * customer.priority
+    return urgency
+
 
 def _getClosestAndSecondClosestDepot(customer, depotsWithUnsatisfiedDemand, problem):
     i = 0
     asymmetricTravelTimes = []
     while(i < len(depotsWithUnsatisfiedDemand)):
         if(_isAssignable(customer, depotsWithUnsatisfiedDemand[i], problem)):
-            asymmetricTravelTimes[i] = problem.distanceMatrix[customer.index, depotsWithUnsatisfiedDemand[i].index] + problem.distanceMatrix[depotsWithUnsatisfiedDemand[i].index, customer.index]
+            asymmetricTravelTimes.append(problem.distanceMatrix[customer.index, depotsWithUnsatisfiedDemand[i].index] + problem.distanceMatrix[depotsWithUnsatisfiedDemand[i].index, customer.index])
         else:
-            asymmetricTravelTimes[i] = np.Infinity
+            asymmetricTravelTimes.append(np.Infinity)
         i+=1
     
     sorted = np.sort(asymmetricTravelTimes)
@@ -115,7 +113,7 @@ def _calculateTemporalClusterWorkDemand(depot, problem, customer):
     # we need to go back to the depot n-times where n is the number of vehicles at the depot
     temporalClusterWorkDemand+= len(depot.vehicles) * avgTravelTime
 
-    return temporalClusterWorkDemand
+    return temporalClusterWorkDemand, avgTravelTime
 
 
 def _calculateAvgTravelTime(depot, customer, problem):
@@ -139,9 +137,9 @@ def _calculateAvgTravelTime(depot, customer, problem):
 def parallelUrgencyAssignment(problem, plotClusters = False):
 
     depotsWithUnsatisfiedDemand = list(problem.depots)
-    depotsWithSatisfiedDemand = []
 
     nonAssignedCustomers = list(problem.demand)
+    holdingVector = []
     
     assignmentStillPossible = True
     # we try to assign customers to depots as long as there is a depot with unsatisfied demand left
@@ -155,11 +153,13 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
 
             firstDep, secDep = _getClosestAndSecondClosestDepot(stop, depotsWithUnsatisfiedDemand, problem)
             
-            # At least one depot (always the first one) has to be compatible with the customer otherweise we can not assign him 
+            # At least one depot (always the first one) has to be compatible with the customer otherwise we can not assign him anymore we drive him into the holding vector.
             if(firstDep is not None):
                 bestDepotForStops.append(firstDep)
-                urgencies.append(_urgency(stop, firstDep, secDep))
+                urgencies.append(_urgency(stop, firstDep, secDep, problem))
                 stops.append(stop)
+            else:
+                holdingVector.append(stop)
 
         limitForDepotReached = False
         
@@ -167,10 +167,15 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
         if(not urgencies):
             assignmentStillPossible = False
 
+        # These customers can not be taken care of right now. This is the job of the optimization algorithm.
+        for unassignableCustomer in holdingVector:
+            if(unassignableCustomer in nonAssignedCustomers):
+                nonAssignedCustomers.remove(unassignableCustomer)
+
         # until we have customers and no free depot reached it's limit we assign customers according to the urgencies.
         # if a depot has reached the capacity limit for a dedicated customer we stop because the urgencies need to be recalculated because the clustering environment has changed.
         while (assignmentStillPossible and nonAssignedCustomers and not limitForDepotReached):
-            
+
             maxUrgencyIndex = urgencies.index(max(urgencies))
             customerWithMaxUrgency = stops[maxUrgencyIndex]
             closestDepot = bestDepotForStops[maxUrgencyIndex]
@@ -190,8 +195,15 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
             else:
                 limitForDepotReached = True
         
-
+    routes = []
+    for depot in problem.depots:
+        for vehicle in depot.vehicles:
+            route = Route(problem, depot, vehicle)
+            routes.append(route)
     
+    clusteredSolution = Solution(routes, holdingVector, problem)
+
+
     if (plotClusters):
         G = nx.Graph()
 
@@ -220,8 +232,56 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
 
         nx.draw_networkx_edges(G, nx.get_node_attributes(G, 'pos'), G.edges())
         
-        return G
+        return G, clusteredSolution
+    
+    return clusteredSolution
+
+
+def buildSolutionParallelStyle(solution):
+    
+    problem = solution.problem
+
+    # we run the algorithm on all the depots
+    for depot in problem.depots:
         
+        # create a list for all routes of the depot
+        routesForDepot = []
+        for route in solution.routes:
+            if(route.depot is depot):
+                routesForDepot.append(route)
+        
+        unroutedCustomers = depot.clusterCache
+        
+        cheapestInsertions = {}
+        
+        # for all unrouted customers...
+        for unroutedCust in unroutedCustomers:
+            i = 0
+            # ...search for the cheapest insertion spot in all the routes
+            for route in routesForDepot:
+                
+                insertAt = 0
+                insertionCostForRoute = []
+                while(insertAt <= len(route.stops)):
+
+                    if(route.isAssignable(unroutedCust), insertAt):
+                        insertAt+=1
+            
+            i+=1
+
+
+
+
+        
+
+            
+
+        
+
+
+
+        
+
 
 
 

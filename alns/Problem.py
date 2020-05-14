@@ -9,7 +9,7 @@ from alns.Depot import Depot
 from alns.PlaningHorizon import PlanningHorizon
 from alns.ServiceStop import ServiceStop
 from alns.Route import Route
-from alns.TVRPAlgorithms import parallelUrgencyAssignment
+from alns.TVRPAlgorithms import *
 
 class Problem:
 
@@ -28,6 +28,7 @@ class Problem:
         self._serviceMap = self.buildServiceMap()
         self._maxServiceStartDistance = self.calculateMaxServiceStartDistance()
         self._maxTravelTimeOccurences = self.calculcateMaxTravelTimeOccurences()
+        self._maxTimeWindowDistance = self.calculateMaxTimeWindowDistance()
 
     
     @property
@@ -69,6 +70,10 @@ class Problem:
     @property
     def maxTravelTimeOccurences(self):
         return self._maxTravelTimeOccurences
+    
+    @property
+    def maxTimeWindowDistance(self):
+        return self._maxTimeWindowDistance
 
 
     def readInstance(self, instanceFilepath):
@@ -200,6 +205,22 @@ class Problem:
                 j+=1
             i+=1
         return max
+    
+    def calculateMaxTimeWindowDistance(self):
+        # Depots are excluded since they are always 0 in distance since their time windows are nested
+        max = -1
+        i = 0
+        # the tw distance is a symmetric measure.
+        while(i < len(self._demand)):
+            j = 0
+            while(j < len(self._demand)):
+                if i <=j:
+                    twDistance = tansiniDTW(self._demand[i], self._demand[j])
+                    if twDistance > max:
+                        max = twDistance
+                j+=1
+            i+=1
+        return max
 
     # /ENHANCEMENT/: Draw legend for colors dependend on priority.
     def plot(self):
@@ -223,10 +244,12 @@ class Problem:
         return G
 
 p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
-# p.plot()
-# plt.show()
+
 
 G = parallelUrgencyAssignment(p, True)
+
+p.plot()
+plt.show()
 
 # r = Route(p, p.depots[3], p.fleet[3])
 
