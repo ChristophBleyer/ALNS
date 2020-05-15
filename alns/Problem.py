@@ -224,12 +224,12 @@ class Problem:
 
     # /ENHANCEMENT/: Draw legend for colors dependend on priority.
     def plot(self):
-        G = nx.Graph()
+        G = nx.DiGraph(directed=True)
         colors = []
         labels = {}
         for depot in self._depots:
             G.add_node(depot.index, pos=(depot.lng, depot.lat))
-            colors.append('green')
+            colors.append('blue')
         
         for stop in self._demand:
             G.add_node(stop.index, pos=(stop.lng, stop.lat))
@@ -243,13 +243,25 @@ class Problem:
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
         return G
 
+
 p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
 
+solution = parallelUrgencyAssignment(p)
 
-G = parallelUrgencyAssignment(p, True)
+print("Percent custs in holding after clustering",  len(solution.unassignedRequests))
 
-p.plot()
+buildSolutionParallelStyle(solution)
+
+print("Percent custs in holding",  len(solution.unassignedRequests))
+
+
+solution.toGraph()
 plt.show()
+
+
+
+
+
 
 # r = Route(p, p.depots[3], p.fleet[3])
 

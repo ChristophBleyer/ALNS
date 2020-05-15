@@ -1,5 +1,6 @@
 import numpy as np
 import networkx as nx
+import copy
 import matplotlib.pyplot as plt
 from alns.Solution import Solution
 from alns.Route import Route
@@ -153,7 +154,7 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
 
             firstDep, secDep = _getClosestAndSecondClosestDepot(stop, depotsWithUnsatisfiedDemand, problem)
             
-            # At least one depot (always the first one) has to be compatible with the customer otherwise we can not assign him anymore we drive him into the holding vector.
+            # At least one depot (always the first one) has to be compatible with the customer otherwise we can not assign him anymore and we drive him into the holding vector.
             if(firstDep is not None):
                 bestDepotForStops.append(firstDep)
                 urgencies.append(_urgency(stop, firstDep, secDep, problem))
@@ -241,7 +242,7 @@ def buildSolutionParallelStyle(solution):
     
     problem = solution.problem
 
-    # we run the algorithm on all the depots
+    # we run the algorithm on all the depots. This should be done in parallel (in a computational sense) in future iterations
     for depot in problem.depots:
         
         # create a list for all routes of the depot
@@ -252,22 +253,163 @@ def buildSolutionParallelStyle(solution):
         
         unroutedCustomers = depot.clusterCache
         
-        cheapestInsertions = {}
-        
-        # for all unrouted customers...
-        for unroutedCust in unroutedCustomers:
-            i = 0
-            # ...search for the cheapest insertion spot in all the routes
-            for route in routesForDepot:
-                
-                insertAt = 0
-                insertionCostForRoute = []
-                while(insertAt <= len(route.stops)):
+        cheapestCostsPerCust= {}
+        changedRoute = None
+        while(unroutedCustomers):
 
-                    if(route.isAssignable(unroutedCust), insertAt):
-                        insertAt+=1
+            # for all unrouted customers...
+            for unroutedCust in unroutedCustomers:
+                
+                cheapestCostPerRoute = {}
+                # ...search for the cheapest insertion spot in all the routes
+                for route in routesForDepot:
+                    
+                    # if a route has not changed we do not need to update the costs for all unrouted customers for that route since it the insertion costs stay the same.
+                    if(changedRoute is None or route is changedRoute):
+
+                        insertAt = 0
+                        insertionCostForRoute = []
+
+                        # try to insert the customer in all places of the current coute and store the costs
+                        while(insertAt <= len(route.stops)):
+
+                            if(route.isAssignable(unroutedCust, insertAt)):
+                                cost = 0.75 * route.getTimeBasedInsertionCost(insertAt - 1, insertAt, unroutedCust) + 0.25 * route.getIntroducedDelay(insertAt - 1, insertAt, unroutedCust)
+                            else:
+                                cost = np.Infinity
+                            
+                            insertionCostForRoute.append(cost)
+                            insertAt+=1
+                        
+                        # store the cheapest place of the current coute
+                        cheapestPlaceCost = min(insertionCostForRoute)
+                        
+                        if(cheapestPlaceCost == np.Infinity):
+                            cheapestPlace = -100
+                        else:
+                            cheapestPlace = insertionCostForRoute.index(cheapestPlaceCost)
+                    
+                        cheapestCostPerRoute[route] = [cheapestPlace, cheapestPlaceCost]
             
-            i+=1
+                # after determining the cheapest insertion place for all routes for the current customer we store the cheapest costs with a reference to that customer
+                if(changedRoute is None):
+                    cheapestCostsPerCust[unroutedCust] = cheapestCostPerRoute
+                else:
+                    cheapestCostsPerCust[unroutedCust][changedRoute] = cheapestCostPerRoute[changedRoute]
+            
+            
+            # determine the optimal route for all customers, that is the route with the minimal cost for insertion at the cheapest place in that route
+            bestFitPerCust = {}
+            toDelete = []
+            for unroutedCust in cheapestCostsPerCust:
+                
+                allOvercheapestPlaceCost = [-100, np.Infinity, None]
+                
+                cheapestCostForRoute = cheapestCostsPerCust[unroutedCust]
+
+                for route in cheapestCostForRoute:
+                    
+                    if(cheapestCostForRoute[route][1] < allOvercheapestPlaceCost[1]):
+                        allOvercheapestPlaceCost = copy.deepcopy(cheapestCostForRoute[route])
+                        allOvercheapestPlaceCost.append(route)
+                
+                # the customers that cannot be inserted anywhere they are removed from the depots cluster cache and driven into the solutions holding list.
+                if (allOvercheapestPlaceCost[1] == np.Infinity):
+                    del unroutedCustomers[unroutedCustomers.index(unroutedCust)]
+                    toDelete.append(unroutedCust)
+                    solution.unassignedRequests.append(unroutedCust)
+                else:
+                    bestFitPerCust[unroutedCust] = allOvercheapestPlaceCost
+            
+            for el in toDelete:
+                del cheapestCostsPerCust[el]
+            
+            if(not cheapestCostsPerCust):
+                return
+
+            # the customer that maximizes the generalized regret will be inserted at the cheapest position across all routes
+            regret = {}
+            insertLoss = {}
+            for unroutedCust in bestFitPerCust:
+                
+                insertLoss[unroutedCust] = 0.0
+                regret[unroutedCust] = 0.0
+                cheapestCostRouteList = cheapestCostsPerCust[unroutedCust]
+                
+                # we do not exclude the bestFitPerCust in the calculation since it will normalize to zero anyways
+                for route in cheapestCostRouteList:
+                    
+                    costsForRoute = cheapestCostRouteList[route]
+                    
+                    # if we can not include a customer in a route we increment his loss. If we can include him in a route we add to the regret.
+                    if(costsForRoute[1] == np.Infinity):
+                        insertLoss[unroutedCust]+=1
+                    else:
+                        regret[unroutedCust]+= costsForRoute[1] - bestFitPerCust[unroutedCust][1]
+                
+                if(regret[unroutedCust] < 0):
+                    raise Exception("impossible system state")
+            
+            # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest regret.
+            maxLossCustomer = max(insertLoss, key=insertLoss.get)
+            maxLossCustomers =  []
+
+            for cust in insertLoss:
+                if(insertLoss[cust] == insertLoss[maxLossCustomer]):
+                    maxLossCustomers.append(cust)
+            
+            regretOnSameLossLevel = {}
+            for cust in maxLossCustomers:
+                regretForCust = regret[cust]
+                regretOnSameLossLevel[cust] = regretForCust
+            
+            # if the route length is 1 meaning there is only one route for that depot or only one route left we insert the customer that has the cheapest insertion cost for that route
+            if(len(routesForDepot) == 1 or max(regretOnSameLossLevel, key=regretOnSameLossLevel.get) == 0.0):
+
+                minCosts = {}
+
+                for cust in maxLossCustomers:
+                    minCosts[cust] = bestFitPerCust[cust][1]
+                
+                customerToInsert = min(minCosts, key=minCosts.get)
+
+            else:
+                customerToInsert = max(regretOnSameLossLevel, key=regretOnSameLossLevel.get)
+
+            
+            del unroutedCustomers[unroutedCustomers.index(customerToInsert)]
+            del cheapestCostsPerCust[customerToInsert]
+            
+            
+            targetRoute = bestFitPerCust[customerToInsert][2]
+            success = targetRoute.tryInsertServiceStop(customerToInsert, bestFitPerCust[customerToInsert][0])
+            changedRoute = targetRoute
+
+            if(not success):
+                raise Exception("impossible system state")
+
+
+
+
+
+
+
+
+
+        
+
+        
+
+
+        
+
+        
+        
+
+
+            
+            
+
 
 
 

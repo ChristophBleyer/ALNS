@@ -70,17 +70,17 @@ class Solution:
         for route in self.routes:
             waypoints = route.stops
 
-            G.add_edge(route.depot.index, route.waypoints[0].index, weight=self.problem.distanceMatrix[route.depot.index, route.waypoints[0].index])
-            G.add_edge(route.waypoints[len(waypoints) - 1].index, route.depot.index, weight=self.problem.distanceMatrix[route.waypoints[len(waypoints) - 1].index, route.depot.index])
+            if(waypoints):
+                G.add_edge(route.depot.index, waypoints[0].index)
+                G.add_edge(waypoints[len(waypoints) - 1].index, route.depot.index)
 
             i = 0
             while (i < len(waypoints) - 1):
-                G.add_edge(waypoints[i].index, waypoints[i + 1].index, weight=self.problem.distanceMatrix[waypoints[i].index, waypoints[i + 1].index])
+                G.add_edge(waypoints[i].index, waypoints[i + 1].index)
                 i+=1
         
 
-        nx.draw_networkx_edges(G, nx.get_node_attributes(G, 'pos'), G.edges())
-        nx.draw_networkx_edge_labels(G, nx.get_node_attributes(G, 'pos'), nx.get_edge_attributes(G,'weight'), font_size=6)
+        nx.draw_networkx_edges(G, nx.get_node_attributes(G, 'pos'), G.edges(), arrows=True)
         
         return G
             

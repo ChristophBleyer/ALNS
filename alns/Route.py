@@ -81,7 +81,7 @@ class Route:
         seemsPossible, prototype, lunchRescedulingNeeded = self.tryGetNoLunchInsertionPrototype(index, newStop)
 
         if (not seemsPossible):
-            print("BUMP Because of scheduling problem")
+           # print("BUMP Because of scheduling problem")
             return False
         
         depotBreakDepartureBefore = self.depot.schedule.departureIncludesBreak
@@ -106,7 +106,7 @@ class Route:
             pauseInjectedPrototype = prototype
         
         if(not isPossible):
-            print("BUMP Because of lunch insersion problem")
+            # print("BUMP Because of lunch insersion problem")
             self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
             self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
             return False
@@ -114,7 +114,7 @@ class Route:
         workTime = self.calculateWorktime(pauseInjectedPrototype)
 
         if (workTime > self.vehicle.maxOvertime):
-            print("BUMP Because of overtime problem")
+            # print("BUMP Because of overtime problem")
             self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
             self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
             return False
@@ -301,7 +301,7 @@ class Route:
 
             depotDeparture = trialPlan[0].serviceTime.earliest - self.problem.timeMatrix[self.depot.index, trialPlan[0].index]
             depotArrival = trialPlan[len(trialPlan) - 1].schedule.departureTime + self.problem.timeMatrix[trialPlan[len(trialPlan) - 1].index, self.depot.index]
-            
+
             # lunch can be inserted only between the depot and the first customer
             if(depotDeparture <= earliestLunchStart and trialPlan[0].schedule.arrivalTime >= latestLunchStart):
                 self.depot.schedule.travelIncludesBreak = True
@@ -321,6 +321,8 @@ class Route:
                 # we can take the pause and than start work in the field and still are on time like planned so far.
                 else:
                     return True, trialPlan
+            else:
+                return False,  []
 
 
 
@@ -476,9 +478,9 @@ class Route:
         
         return elementsToRemove
     
-    def getDistanceBasedInsertionCost(self, pred, succ,  newStop):
+    def getDistanceBasedInsertionCost(self, pred, succ, newStop):
 
-        if(succ != -1):
+        if(succ != len(self.stops)):
             succ = self.stops[succ]
         else:
             succ = self.depot
@@ -499,9 +501,9 @@ class Route:
 
         return cost
     
-    def getTimeBasedInsertionCost(self, pred, succ,  newStop):
+    def getTimeBasedInsertionCost(self, pred, succ, newStop):
 
-        if(succ != -1):
+        if(succ != len(self.stops)):
             succ = self.stops[succ]
         else:
             succ = self.depot
@@ -525,7 +527,7 @@ class Route:
     def getIntroducedDelay(self, pred, succ, newStop):
 
         # if we insert the last node in the route we do not have any delay. Because the depot is not a customer. 
-        if(succ == -1):
+        if(succ == len(self.stops)):
             return 0
         
         succ = self.stops[succ]
@@ -566,9 +568,6 @@ class Route:
             raise Exception("impossible system state")
 
         return introducedDelay
-
-
-
 
     
     def stateLog(self):
