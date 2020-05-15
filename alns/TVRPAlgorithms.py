@@ -8,7 +8,7 @@ from alns.Route import Route
 def _closeness(customer, depot, problem):
     distance = problem.distanceMatrix[customer.index, depot.index] + problem.distanceMatrix[depot.index, customer.index]
     affinity = _aysmmetricTansiniAffinity(customer,depot, problem)
-    return distance
+    return distance/affinity
 
 def _aysmmetricTansiniAffinity(serviceStop, depot, problem):
     nodesInCluster = list(depot.clusterCache)
