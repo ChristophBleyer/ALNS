@@ -119,6 +119,9 @@ class Route:
             self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
             return False
         
+        self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
+        self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
+        
         return True
 
 
@@ -253,7 +256,7 @@ class Route:
                         return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
                 # If the waiting time is longer or equal to the lunch break we take the lunch at this stage. But we need to wait for that amount of time anyways
                 else:
-                    additionalStay = 0
+                    additionalStay = 0.0
                     return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
             # The pause is only possible in between these two customers or between the last customer and the depot
             elif((stop.schedule.departureTime <= earliestLunchStart and (i + 1) != len(prototype) and prototype[i+1].schedule.arrivalTime >= latestLunchStart) or ((i + 1) == len(prototype) and stop.schedule.departureTime <= earliestLunchStart and depotArrival >= latestLunchStart)):
@@ -331,7 +334,7 @@ class Route:
         else:
             trialPlan[injectAt].schedule.travelIncludesBreak = True
         
-        if(additionalStay == 0):
+        if(additionalStay == 0.0):
             return True, trialPlan
 
         i = injectAt

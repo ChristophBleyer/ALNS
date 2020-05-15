@@ -255,36 +255,15 @@ buildSolutionParallelStyle(solution)
 print("Percent custs in holding",  len(solution.unassignedRequests))
 
 
+for route in solution.routes:
+        if(route.stops):
+            route.stateLog()
+
+
+
 solution.toGraph()
 plt.show()
 
 
-
-
-
-
-# r = Route(p, p.depots[3], p.fleet[3])
-
-# result = r.tryInsertServiceStop(p.demand[0], 0)
-# result = r.tryInsertServiceStop(p.demand[14], 1)
-# result = r.tryInsertServiceStop(p.demand[11], 2)
-# result = r.tryInsertServiceStop(p.demand[20], 3)
-# result = r.tryInsertServiceStop(p.demand[12], 3)
-# result = r.tryInsertServiceStop(p.demand[9], 3)
-# result = r.tryInsertServiceStop(p.demand[13], 6)
-# result = r.tryInsertServiceStop(p.demand[17], 7)
-
-# print(p.demand[17].serviceTime.earliest, p.demand[17].serviceTime.latest)
-# print("PAUSE BETWEEN: ", p.lunchBreak.earliest, " and ", p.lunchBreak.latest)
-# print("PAUSE SIZE: ", p.lunchDuration)
-# print("MAX OVERTIME: ", p.fleet[3].maxOvertime)
-
-# print("INSERTION WORKS: ", result)
-# r.stateLog()
-# print()
-# print()
-# print("INSERT DURATION:", p.demand[19].serviceDuration)
-# print("INSERT earliest:", p.demand[19].serviceTime.earliest)
-# print(r.getIntroducedDelay(1,2, p.demand[19]))
 
 

@@ -310,7 +310,7 @@ def buildSolutionParallelStyle(solution):
                 for route in cheapestCostForRoute:
                     
                     if(cheapestCostForRoute[route][1] < allOvercheapestPlaceCost[1]):
-                        allOvercheapestPlaceCost = copy.deepcopy(cheapestCostForRoute[route])
+                        allOvercheapestPlaceCost = cheapestCostForRoute[route]
                         allOvercheapestPlaceCost.append(route)
                 
                 # the customers that cannot be inserted anywhere they are removed from the depots cluster cache and driven into the solutions holding list.
@@ -349,6 +349,11 @@ def buildSolutionParallelStyle(solution):
                 
                 if(regret[unroutedCust] < 0):
                     raise Exception("impossible system state")
+                
+                # Increase the regret by the customers priority
+                regret[unroutedCust]*=unroutedCust.priority
+
+            
             
             # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest regret.
             maxLossCustomer = max(insertLoss, key=insertLoss.get)
