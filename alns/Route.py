@@ -221,7 +221,7 @@ class Route:
                 current.schedule.travelIncludesBreak = False
             
             # if we have to wait waiting has also been needed before the insert. That means all the updcoming planning stays the same. We can stop here.
-            if(current.schedule.waitingTime > 0):
+            if(current.schedule.waitingTime > 0 and i != index):
                 return True, trialPlan, lunchDetected
             
             i+=1
@@ -377,7 +377,7 @@ class Route:
                 current.schedule.departureTime+= additionalStay
             
             # if we have to wait waiting has also been needed before the insert. That means all the updcoming planning stays the same. We can stop here.
-            if(current.schedule.waitingTime > 0):
+            if(current.schedule.waitingTime > 0 and i != injectAt):
                 return True, trialPlan
             
             i+=1
@@ -391,22 +391,29 @@ class Route:
     
     def updateDepotScheduleOnChange(self):
 
-        # the departure is taken so that the we arrive at the first customer as soon as we can start our work. This has been scheduled to the first stop already.
-        self.depot.schedule.departureTime = self._stops[0].serviceTime.earliest - self.problem.timeMatrix[self.depot.index, self._stops[0].index]
+        if(self.stops):
 
-        # lunch is taken on the road
-        if(self.depot.schedule.travelIncludesBreak):
-            self.depot.schedule.departureTime-=self.problem.lunchDuration
+            # the departure is taken so that the we arrive at the first customer as soon as we can start our work. This has been scheduled to the first stop already.
+            self.depot.schedule.departureTime = self._stops[0].serviceTime.earliest - self.problem.timeMatrix[self.depot.index, self._stops[0].index]
 
-        # if we take the lunch at the depot we take it as early as possible. If that break causes us the depart later we have to update the departure time. This has been scheduled to the first stop already.
-        if ((self.depot.schedule.departureTime >= self.problem.lunchBreak.latest) and (self.problem.lunchBreak.earliest + self.problem.lunchDuration  > self.depot.schedule.departureTime)):
-            self.depot.schedule.departureTime = self.problem.lunchBreak.earliest + self.problem.lunchDuration
+            # lunch is taken on the road
+            if(self.depot.schedule.travelIncludesBreak):
+                self.depot.schedule.departureTime-=self.problem.lunchDuration
 
-        self.depot.schedule.arrivalTime = self._stops[len(self._stops) - 1].schedule.departureTime + self.problem.timeMatrix[self._stops[len(self._stops) - 1].index, self.depot.index]
+            # if we take the lunch at the depot we take it as early as possible. If that break causes us the depart later we have to update the departure time. This has been scheduled to the first stop already.
+            if ((self.depot.schedule.departureTime >= self.problem.lunchBreak.latest) and (self.problem.lunchBreak.earliest + self.problem.lunchDuration  > self.depot.schedule.departureTime)):
+                self.depot.schedule.departureTime = self.problem.lunchBreak.earliest + self.problem.lunchDuration
 
-        # if we could only take the lunch break on the way back to the depot we will arrive later
-        if(self._stops[len(self._stops) - 1].schedule.travelIncludesBreak):
-            self.depot.schedule.arrivalTime+= self.problem.lunchDuration
+            self.depot.schedule.arrivalTime = self._stops[len(self._stops) - 1].schedule.departureTime + self.problem.timeMatrix[self._stops[len(self._stops) - 1].index, self.depot.index]
+
+            # if we could only take the lunch break on the way back to the depot we will arrive later
+            if(self._stops[len(self._stops) - 1].schedule.travelIncludesBreak):
+                self.depot.schedule.arrivalTime+= self.problem.lunchDuration
+        
+        else:
+            # no stops left.
+             self.depot.schedule.departureTime = 0
+             self.depot.schedule.arrivalTime = 0
     
     
     def removeServiceStop(self, index, cluster = False, lunchDetected = False):
@@ -416,7 +423,6 @@ class Route:
 
         i = index
         while(i < len(self._stops)):
-
             current = self._stops[i]
 
             # An insert at the beginning is an edge case. The predecessor is a the depot. Its departure time is set exactly to meet the earliest arrival treshhold of the new node.
@@ -477,7 +483,11 @@ class Route:
             elementsToRemove.append(self._stops[removeAt])
             del self._stops[removeAt]
         
-        self.removeServiceStop(firstToDelete, True, lunchDetected)
+        if(not self.stops):
+            # removed everything. Reset the depot schedule.
+            self.updateDepotScheduleOnChange()
+        else:
+            self.removeServiceStop(firstToDelete, True, lunchDetected)
         
         return elementsToRemove
     

@@ -3,6 +3,7 @@ import pandas
 import networkx as nx
 import matplotlib.pyplot as plt
 import json
+import math
 from alns.Vehicle import Vehicle
 from alns.TimeInterval import TimeInterval
 from alns.Depot import Depot
@@ -242,27 +243,6 @@ class Problem:
         
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
         return G
-
-
-p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
-
-solution = parallelUrgencyAssignment(p)
-
-print("Percent custs in holding after clustering",  len(solution.unassignedRequests))
-
-buildSolutionParallelStyle(solution)
-
-print("Percent custs in holding",  len(solution.unassignedRequests))
-
-
-for route in solution.routes:
-        if(route.stops):
-            route.stateLog()
-
-
-
-solution.toGraph()
-plt.show()
 
 
 

@@ -209,12 +209,15 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
         G = nx.Graph()
 
         colors = []
+        edgeColors = []
         labels = {}
         for depot in problem.depots:
             G.add_node(depot.index, pos=(depot.lng, depot.lat))
-            colors.append('green')
+            colors.append('blue')
+            edgeColors.append('blue')
         
         for stop in problem.demand:
+            edgeColors.append('blue')
             G.add_node(stop.index, pos=(stop.lng, stop.lat))
             if(stop.priority == 1.0):
                  colors.append('yellow')
@@ -231,7 +234,7 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
 
                 G.add_edge(cluster.index, el.index)
 
-        nx.draw_networkx_edges(G, nx.get_node_attributes(G, 'pos'), G.edges())
+        nx.draw_networkx_edges(G, nx.get_node_attributes(G, 'pos'), G.edges(), edge_color=edgeColors)
         
         return G, clusteredSolution
     
@@ -264,7 +267,7 @@ def buildSolutionParallelStyle(solution):
                 # ...search for the cheapest insertion spot in all the routes
                 for route in routesForDepot:
                     
-                    # if a route has not changed we do not need to update the costs for all unrouted customers for that route since it the insertion costs stay the same.
+                    # if a route has not changed we do not need to update the costs for all unrouted customers for that route since the insertion costs stay the same.
                     if(changedRoute is None or route is changedRoute):
 
                         insertAt = 0
@@ -281,7 +284,7 @@ def buildSolutionParallelStyle(solution):
                             insertionCostForRoute.append(cost)
                             insertAt+=1
                         
-                        # store the cheapest place of the current coute
+                        # store the cheapest place of the current route
                         cheapestPlaceCost = min(insertionCostForRoute)
                         
                         if(cheapestPlaceCost == np.Infinity):
@@ -392,6 +395,69 @@ def buildSolutionParallelStyle(solution):
 
             if(not success):
                 raise Exception("impossible system state")
+
+
+
+
+def determineDegreeOfDestruction(problem):
+    # As mentioned by Ropke and Pisinger the degree of destruction is choosen at random depending on the instance size. In this case between 10 and 50 percent.
+   return round(np.random.uniform(0.1, 0.50) * len(problem.demand))
+
+def determineDegreeOfDiversification():
+    return 0.95
+
+def randomRemoval(current, random_state):
+    destroyed = copy.deepcopy(current)
+    
+    solutionSpace = []
+    nodeToRoute = {}
+    targetsPerRoute = {}
+    for route in destroyed.routes:
+        targetsPerRoute[route] = []
+        for stop in route.stops:
+            solutionSpace.append(stop)
+            nodeToRoute[stop] = route
+
+    # elements are also removed from the holding vector to drive them back into the solution space
+    combinedSearchSpace = destroyed.unassignedRequests + solutionSpace
+
+    if(len(combinedSearchSpace) != len(current.problem.demand) or len(combinedSearchSpace) != len(destroyed.problem.demand)):
+        raise Exception("impossible system state")
+
+    random_state.shuffle(combinedSearchSpace)
+
+    destructionDegree = determineDegreeOfDestruction(destroyed.problem)
+    targetsToRemove = random_state.choice(combinedSearchSpace, destructionDegree, replace=False)
+
+    for target in targetsToRemove:
+        if(target in solutionSpace):
+            targetRoute = nodeToRoute[target]
+            idx = targetRoute.stops.index(target)
+            targetsPerRoute[targetRoute].append(idx)
+        elif(target in destroyed.unassignedRequests):
+            el = destroyed.unassignedRequests.pop(destroyed.unassignedRequests.index(target))
+            destroyed.removalCache.append(el)
+        else:
+            raise Exception("impossible system state")
+    
+
+    for targetRoute in targetsPerRoute:
+        if(targetsPerRoute[targetRoute]):
+            removed = targetRoute.removeServiceStops(targetsPerRoute[targetRoute])
+            for el in removed:
+                destroyed.removalCache.append(el)
+
+    
+    if(len(destroyed.removalCache) != destructionDegree):
+        raise Exception("impossible system state")
+
+    return destroyed
+
+
+def distancedBasedWorstRemoval(current, random_State):
+    pass
+
+
 
 
 
