@@ -70,7 +70,7 @@ class RecordToRecordTravel(AcceptanceCriterion):
     def method(self):
         return self._method
 
-    def accept(self, rnd, best, current, candidate):
+    def accept(self, rnd, best, current, candidate, compareStrategy):
         # This follows from the paper by Dueck and Scheueur (1990), p. 162.
         result = (candidate.objective() - best.objective()) <= self._threshold
 

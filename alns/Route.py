@@ -22,17 +22,24 @@ class Route:
     def stops(self):
         return self._stops
     
-    def calculateOvertime(self):
+    def calculateOvertime(self, onInstance = None):
+        
+        if (onInstance is None):
+            onInstance = self._stops
+        
+        if(onInstance):
+        
+            workTime = self.calculateWorktime(onInstance)
 
-        workTime = self.calculateWorktime()
+            if (workTime > self.vehicle.overtimeThreshold):
+                overTime = workTime - self.vehicle.overtimeThreshold
+            else:
+                overTime = 0
 
-        if (workTime > self.vehicle.overtimeThreshold):
-            overTime = workTime - self.vehicle.overtimeThreshold
-        else:
-            overTime = 0
+            return overTime
+        
+        return 0
 
-        return overTime
-    
     def calculateWorktime(self, onInstance = None):
          
         if (onInstance is None):
@@ -55,23 +62,26 @@ class Route:
     
     def calculateDistanceTraveled(self):
 
-        distanceTraveled = 0
-        i = 0
-        # distance from each customer to his sucessive customer. 
-        while(i < len(self._stops) - 1):
-            distanceTraveled+= self.problem.distanceMatrix[self._stops[i].index, self._stops[i + 1].index]
-            i+=1
+        if(self.stops):
+
+            distanceTraveled = 0
+            i = 0
+            # distance from each customer to his sucessive customer. 
+            while(i < len(self._stops) - 1):
+                distanceTraveled+= self.problem.distanceMatrix[self._stops[i].index, self._stops[i + 1].index]
+                i+=1
+            # distance from the depot to the first customer
+            distanceTraveled+= self.problem.distanceMatrix[self.depot.index, self._stops[0].index]
+
+            # distance from the last customer back to the depot
+            distanceTraveled+= self.problem.distanceMatrix[self._stops[len(self._stops) - 1].index, self.depot.index]
+
+            return distanceTraveled
+        else:
+            return 0
         
-        # distance from the depot to the first customer
-        distanceTraveled+= self.problem.distanceMatrix[self.depot.index, self._stops[0].index]
 
-        # distance from the last customer back to the depot
-        distanceTraveled+= self.problem.distanceMatrix[self._stops[len(self._stops) - 1].index, self.depot.index]
-
-        return distanceTraveled
-    
-
-    def isAssignable(self, newStop, index):
+    def isAssignable(self, newStop, index, metadata = None):
         
         # Constraint: Does this routes vehicle actually has what it takes ... ?
         if (not self.vehicle.canServe(newStop)):
@@ -112,7 +122,7 @@ class Route:
             return False
         
         workTime = self.calculateWorktime(pauseInjectedPrototype)
-
+        
         if (workTime > self.vehicle.maxOvertime):
             # print("BUMP Because of overtime problem")
             self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
@@ -122,6 +132,9 @@ class Route:
         self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
         self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
         
+        if(metadata != None):
+            metadata["overtime"] =  self.calculateOvertime(pauseInjectedPrototype)
+
         return True
 
 
@@ -508,10 +521,7 @@ class Route:
         predToSucc = self.problem.distanceMatrix[pred.index, succ.index]
 
         cost = predToNew + newToSucc - predToSucc
-
-        if(cost < 0):
-            raise Exception("impossible system state")
-
+        
         return cost
     
     def getTimeBasedInsertionCost(self, pred, succ, newStop):

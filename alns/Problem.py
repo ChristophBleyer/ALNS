@@ -245,5 +245,29 @@ class Problem:
         return G
 
 
+# p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
+
+# solution = parallelUrgencyAssignment(p)
+
+# buildSolutionParallelStyle(solution)
+
+# # solution.toGraph()
+# # plt.show()
+
+# arr = [[400, 30, 20], [1200, 90, 1000], [10, 200, 3], [10, 190, 5], [10, 190, 1]]
+
+# def objectiveCompare(objectiveA, objectiveB):
+#     objectives = [objectiveA, objectiveB]
+
+#     s = sorted(objectives, key= lambda el: el[2])
+#     s = sorted(s, key= lambda el: el[1])
+#     s = sorted(s, key= lambda el: el[0])
+
+#     if(s[0] == objectiveA):
+#         return True
+#     else:
+#         return False
+
+
 
 

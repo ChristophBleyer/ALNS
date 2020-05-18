@@ -72,8 +72,8 @@ class SimulatedAnnealing(AcceptanceCriterion):
     def method(self):
         return self._method
 
-    def accept(self, rnd, best, current, candidate):
-        probability = np.exp((current.objective() - candidate.objective())
+    def accept(self, rnd, best, current, candidate, compareStrategy):
+        probability = np.exp((current.objective()[1] - candidate.objective()[1])
                              / self._temperature)
 
         # We should not set a temperature that is lower than the end
