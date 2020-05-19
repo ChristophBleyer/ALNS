@@ -60,23 +60,26 @@ class Route:
 
         return workTime
     
-    def calculateDistanceTraveled(self):
+    def calculateDistanceTraveledCost(self, onInstance = None):
 
-        if(self.stops):
+        if (onInstance is None):
+            onInstance = self._stops
+
+        if(onInstance):
 
             distanceTraveled = 0
             i = 0
             # distance from each customer to his sucessive customer. 
-            while(i < len(self._stops) - 1):
-                distanceTraveled+= self.problem.distanceMatrix[self._stops[i].index, self._stops[i + 1].index]
+            while(i < len(onInstance) - 1):
+                distanceTraveled+= self.problem.distanceMatrix[onInstance[i].index, onInstance[i + 1].index]
                 i+=1
             # distance from the depot to the first customer
-            distanceTraveled+= self.problem.distanceMatrix[self.depot.index, self._stops[0].index]
+            distanceTraveled+= self.problem.distanceMatrix[self.depot.index, onInstance[0].index]
 
             # distance from the last customer back to the depot
-            distanceTraveled+= self.problem.distanceMatrix[self._stops[len(self._stops) - 1].index, self.depot.index]
+            distanceTraveled+= self.problem.distanceMatrix[onInstance[len(self._stops) - 1].index, self.depot.index]
 
-            return distanceTraveled
+            return distanceTraveled * self.problem.avgDrivingCost
         else:
             return 0
         
@@ -133,7 +136,8 @@ class Route:
         self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
         
         if(metadata != None):
-            metadata["overtime"] =  self.calculateOvertime(pauseInjectedPrototype)
+            metadata["overtimeCost"] =  self.calculateOvertime(pauseInjectedPrototype) * self.vehicle.overTimeCost
+            metadata["distanceTraveledCost"] =  self.calculateDistanceTraveledCost(pauseInjectedPrototype)
 
         return True
 
@@ -314,12 +318,14 @@ class Route:
 
         # depot Edge Cases
         if(additionalStay == -1 and additionalDrive == -1):
-
             depotDeparture = trialPlan[0].serviceTime.earliest - self.problem.timeMatrix[self.depot.index, trialPlan[0].index]
             depotArrival = trialPlan[len(trialPlan) - 1].schedule.departureTime + self.problem.timeMatrix[trialPlan[len(trialPlan) - 1].index, self.depot.index]
+            # print(depotDeparture)
+            # print(depotArrival)
 
             # lunch can be inserted only between the depot and the first customer
             if(depotDeparture <= earliestLunchStart and trialPlan[0].schedule.arrivalTime >= latestLunchStart):
+                # print("HIT TARGET")
                 self.depot.schedule.travelIncludesBreak = True
                 injectAt = 0
             
@@ -329,7 +335,7 @@ class Route:
                 return True, trialPlan
             
             # we take the pause before work in the field starts. 
-            elif(depotDeparture >= latestLunchStart):
+            elif(depotDeparture >= earliestLunchStart):
                 self.depot.schedule.departureIncludesBreak = True
                 # if we take the pause as soon as possible and we exceed the departure we have to recalculate the route. The arrival on the first node will shift because we will depart later.
                 if(earliestLunchStart + self.problem.lunchDuration > depotDeparture):
@@ -474,6 +480,7 @@ class Route:
 
         # with less time on the field a pause is insertable no matter what
         if(not isPossible):
+            self.stateLog()
             raise Exception("impossible system state")
 
         self._stops = pauseInjectedPrototype

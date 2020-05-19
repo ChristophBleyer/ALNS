@@ -396,19 +396,6 @@ def buildSolutionParallelStyle(solution):
                 raise Exception("impossible system state")
 
 
-def objectiveCompare(objectiveA, objectiveB):
-    objectives = [objectiveA, objectiveB]
-
-    s = sorted(objectives, key= lambda el: el[2])
-    s = sorted(s, key= lambda el: el[1])
-    s = sorted(s, key= lambda el: el[0])
-
-    if(s[0] == objectiveA):
-        return True
-    else:
-        return False
-
-
 
 def determineDegreeOfDestruction(problem):
     # As mentioned by Ropke and Pisinger the degree of destruction is choosen at random depending on the instance size. In this case between 10 and 50 percent.
@@ -490,26 +477,20 @@ def greedyInsertion(current, random_state):
                         while(insertAt <= len(route.stops)):
                             
                             metadata = {}
-                            costVector = [np.Infinity, np.Infinity, np.Infinity]
+                            cost = np.Infinity
 
                             if(route.isAssignable(unroutedCust, insertAt, metadata)):
-                                costVector[0] = route.getDistanceBasedInsertionCost(insertAt - 1, insertAt, unroutedCust)
-                                costVector[1] = metadata["overtime"]
-                                if(route.stops == 0):
-                                    costVector[2] =  1
-                                else:
-                                    costVector[2] =  0
+                                cost = metadata["overtimeCost"] + metadata["distanceTraveledCost"] - current.problem.costPerPriority[unroutedCust.priority]
+
                             
-                            insertionCostForRoute.append(costVector)
+                            insertionCostForRoute.append(cost)
                             insertAt+=1
                         
                         # store the cheapest place of the current route
-                        s = sorted(insertionCostForRoute, key= lambda el: el[2])
-                        s = sorted(s, key= lambda el: el[1])
-                        s = sorted(s, key= lambda el: el[0])
+                        s = sorted(insertionCostForRoute)
                         cheapestPlaceCost = s[0]
                         
-                        if(cheapestPlaceCost[0] == np.Infinity):
+                        if(cheapestPlaceCost == np.Infinity):
                             cheapestPlace = -100
                         else:
                             cheapestPlace = insertionCostForRoute.index(cheapestPlaceCost)
@@ -534,14 +515,12 @@ def greedyInsertion(current, random_state):
                 for route in cheapestCostForRoute:
                     toSort.append(cheapestCostForRoute[route])
                 
-                s = sorted(toSort, key= lambda el: el[1][2])
-                s = sorted(s, key= lambda el: el[1][1])
-                s = sorted(s, key= lambda el: el[1][0])
-                
-                cheapest = s[0]
+                sortedList = sorted(toSort, key= lambda el: el[1])
+
+                cheapest = sortedList[0]
 
                 # the customers that cannot be inserted anywhere are removed from the removal cache and driven into the solutions holding list.
-                if (cheapest[1][0] == np.Infinity):
+                if (cheapest[1] == np.Infinity):
                     del current.removalCache[current.removalCache.index(unroutedCust)]
                     toDelete.append(unroutedCust)
                     current.unassignedRequests.append(unroutedCust)
@@ -563,9 +542,7 @@ def greedyInsertion(current, random_state):
             for potentialInsert in bestFitPerCust:
                 cheapestOverall.append(bestFitPerCust[potentialInsert])
             
-            s = sorted(cheapestOverall, key= lambda el: el[1][2])
-            s = sorted(s, key= lambda el: el[1][1])
-            s = sorted(s, key= lambda el: el[1][0])
+            s = sorted(cheapestOverall, key= lambda el: el[1])
 
             targetInsert = s[0]
             del current.removalCache[current.removalCache.index(targetInsert[3])]
@@ -579,6 +556,179 @@ def greedyInsertion(current, random_state):
                 raise Exception("impossible system state")
     
     return current
+
+
+def k_regretInsertion(current, random_state):
+    removalCacheNotEmpty = current.removalCache
+    changedRoute = None
+    cheapestCostsPerCust= {}
+    
+    while(removalCacheNotEmpty):
+
+         # for all unrouted customers...
+            for unroutedCust in current.removalCache:
+                
+                cheapestCostPerRoute = {}
+                # ... search for the cheapest insertion spot in all the routes
+                for route in current.routes:
+                    
+                    # if a route has not changed we do not need to update the costs for all unrouted customers for that route since the insertion costs stay the same.
+                    if(changedRoute is None or route is changedRoute):
+
+                        insertAt = 0
+                        insertionCostForRoute = []
+
+                        # try to insert the customer in all places of the current route and store the costs
+                        while(insertAt <= len(route.stops)):
+                            
+                            metadata = {}
+                            cost = np.Infinity
+
+                            if(route.isAssignable(unroutedCust, insertAt, metadata)):
+                                cost = metadata["overtimeCost"] + metadata["distanceTraveledCost"]
+
+                            
+                            insertionCostForRoute.append(cost)
+                            insertAt+=1
+                        
+                        # store the cheapest place of the current route
+                        s = sorted(insertionCostForRoute)
+                        cheapestPlaceCost = s[0]
+                        
+                        if(cheapestPlaceCost == np.Infinity):
+                            cheapestPlace = -100
+                        else:
+                            cheapestPlace = insertionCostForRoute.index(cheapestPlaceCost)
+                    
+                        cheapestCostPerRoute[route] = [cheapestPlace, cheapestPlaceCost, route, unroutedCust]
+            
+                # after determining the cheapest insertion place for all routes for the current customer we store the cheapest costs with a reference to that customer
+                if(changedRoute is None):
+                    cheapestCostsPerCust[unroutedCust] = cheapestCostPerRoute
+                else:
+                    cheapestCostsPerCust[unroutedCust][changedRoute] = cheapestCostPerRoute[changedRoute]
+            
+
+            # determine the optimal route for all customers, that is the route with the minimal cost for insertion at the cheapest place in that route
+            bestFitPerCust = {}
+            toDelete = []
+            for unroutedCust in cheapestCostsPerCust:
+                
+                cheapestCostForRoute = cheapestCostsPerCust[unroutedCust]
+                
+                toSort = []
+                for route in cheapestCostForRoute:
+                    toSort.append(cheapestCostForRoute[route])
+                
+                sortedList = sorted(toSort, key= lambda el: el[1])
+
+                cheapest = sortedList[0]
+
+                # the customers that cannot be inserted anywhere are removed from the removal cache and driven into the solutions holding list.
+                if (cheapest[1] == np.Infinity):
+                    del current.removalCache[current.removalCache.index(unroutedCust)]
+                    toDelete.append(unroutedCust)
+                    current.unassignedRequests.append(unroutedCust)
+                else:
+                    bestFitPerCust[unroutedCust] = cheapest
+            
+            for el in toDelete:
+                del cheapestCostsPerCust[el]
+            
+            if(not cheapestCostsPerCust):
+
+                if(current.removalCache):
+                    raise Exception("impossible system state")
+                
+                return current
+            
+             # the customer that maximizes the generalized regret will be inserted at the cheapest position across all routes
+            regret = {}
+            insertLoss = {}
+            for unroutedCust in bestFitPerCust:
+                
+                insertLoss[unroutedCust] = 0.0
+                regret[unroutedCust] = 0.0
+                cheapestCostRouteList = cheapestCostsPerCust[unroutedCust]
+                
+                # we do not exclude the bestFitPerCust in the calculation since it will normalize to zero anyways
+                for route in cheapestCostRouteList:
+                    
+                    costsForRoute = cheapestCostRouteList[route]
+                    
+                    # if we can not include a customer in a route we increment his loss. If we can include him in a route we add to the regret.
+                    if(costsForRoute[1] == np.Infinity):
+                        insertLoss[unroutedCust]+=1
+                    else:
+                        regret[unroutedCust]+= costsForRoute[1] - bestFitPerCust[unroutedCust][1]
+                
+                if(regret[unroutedCust] < 0):
+                    raise Exception("impossible system state")
+
+            # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest regret and of these the one with the highest priority.
+            maxLossCustomer = max(insertLoss, key=insertLoss.get)
+            maxLossCustomers =  []
+
+            for cust in insertLoss:
+                if(insertLoss[cust] == insertLoss[maxLossCustomer]):
+                    maxLossCustomers.append(cust)
+            
+            regretOnSameLossLevel = {}
+            for cust in maxLossCustomers:
+                regretForCust = regret[cust]
+                regretOnSameLossLevel[cust] = regretForCust
+            
+            # if the route length is 1 meaning there is only one route left we insert the customer that has the cheapest insertion cost for and the highest priority
+            if(max(regretOnSameLossLevel, key=regretOnSameLossLevel.get) == 0.0):
+
+                prioPerCust = {}
+                for cust in regretOnSameLossLevel:
+                    prioPerCust[cust] = cust.priority
+                
+                maxPrioOnSameLoss = max(prioPerCust, key=prioPerCust.get)
+
+                targets = {}
+                for cust in regretOnSameLossLevel:
+                    if (cust.priority == prioPerCust[maxPrioOnSameLoss]):
+                        targets[cust] = bestFitPerCust[cust][1]
+
+                
+                customerToInsert = min(targets, key=targets.get)
+
+            else:
+                
+                # choose the customer with the highest priority on the maximum loss level and from those the customers the one with the highest regret
+                prioPerCust = {}
+                for cust in regretOnSameLossLevel:
+                    prioPerCust[cust] = cust.priority
+                
+                maxPrioOnSameLoss = max(prioPerCust, key=prioPerCust.get)
+
+                targets = {}
+                for cust in regretOnSameLossLevel:
+                    if (cust.priority == prioPerCust[maxPrioOnSameLoss]):
+                        targets[cust] = regret[cust]
+                
+                customerToInsert = max(targets, key=targets.get)
+
+            
+            del current.removalCache[current.removalCache.index(customerToInsert)]
+            del cheapestCostsPerCust[customerToInsert]
+            
+            
+            targetRoute = bestFitPerCust[customerToInsert][2]
+            success = targetRoute.tryInsertServiceStop(customerToInsert, bestFitPerCust[customerToInsert][0])
+            changedRoute = targetRoute
+
+            if(not success):
+                raise Exception("impossible system state")
+    
+    return current
+
+            
+    
+    
+
             
 
 

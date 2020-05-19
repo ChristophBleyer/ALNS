@@ -30,6 +30,8 @@ class Problem:
         self._maxServiceStartDistance = self.calculateMaxServiceStartDistance()
         self._maxTravelTimeOccurences = self.calculcateMaxTravelTimeOccurences()
         self._maxTimeWindowDistance = self.calculateMaxTimeWindowDistance()
+        self._avgDrivingCost = 0.0001
+        self._costPerPriority = {1.0: 150, 2.0: 200, 3.0: 350}
 
     
     @property
@@ -75,6 +77,15 @@ class Problem:
     @property
     def maxTimeWindowDistance(self):
         return self._maxTimeWindowDistance
+    
+    @property
+    def costPerPriority(self):
+        return self._costPerPriority
+    
+    @property
+    def avgDrivingCost(self):
+        return self._avgDrivingCost
+    
 
 
     def readInstance(self, instanceFilepath):
@@ -109,8 +120,9 @@ class Problem:
             
             overtimeTreshhold = vehicleDataRow[column]
             maxOvertime = vehicleDataRow[column + 1]
+            overTimeCost = vehicleDataRow[column + 2]
             row+=1
-            newVehicle = Vehicle(set(skillSet), overtimeTreshhold, maxOvertime)
+            newVehicle = Vehicle(set(skillSet), overtimeTreshhold, maxOvertime, overTimeCost)
             listOfVehicles.append(newVehicle)
         
         nodeIndex = 0
@@ -251,8 +263,8 @@ class Problem:
 
 # buildSolutionParallelStyle(solution)
 
-# # solution.toGraph()
-# # plt.show()
+# solution.toGraph()
+# plt.show()
 
 # arr = [[400, 30, 20], [1200, 90, 1000], [10, 200, 3], [10, 190, 5], [10, 190, 1]]
 

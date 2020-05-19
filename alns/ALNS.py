@@ -101,9 +101,6 @@ class ALNS(CallbackMixin):
             function name is used instead.
         """
         self._add_operator(self._repair_operators, operator, name)
-    
-    def add_objective_comparism(self, comparism):
-        self.comparism = comparism
 
 
 
@@ -169,7 +166,7 @@ class ALNS(CallbackMixin):
         statistics = Statistics()
 
         if collect_stats:
-            statistics.collect_objective(initial_solution.objective()[1])
+            statistics.collect_objective(initial_solution.objective())
 
         for iteration in range(iterations):
             d_idx = select_operator(self.destroy_operators, d_weights,
@@ -198,7 +195,7 @@ class ALNS(CallbackMixin):
             r_weights[r_idx] += (1 - operator_decay) * weights[weight_idx]
 
             if collect_stats:
-                statistics.collect_objective(current.objective()[1])
+                statistics.collect_objective(current.objective())
 
                 statistics.collect_destroy_operator(d_name, weight_idx)
                 statistics.collect_repair_operator(r_name, weight_idx)
@@ -267,8 +264,8 @@ class ALNS(CallbackMixin):
         int
             The weight index to use when updating the operator weights.
         """
-        if criterion.accept(self._rnd_state, best, current, candidate, self.comparism):
-            if (self.comparism(candidate.objective(), current.objective())):
+        if criterion.accept(self._rnd_state, best, current, candidate):
+            if candidate.objective() < current.objective():
                 weight = WeightIndex.IS_BETTER
             else:
                 weight = WeightIndex.IS_ACCEPTED
@@ -277,7 +274,7 @@ class ALNS(CallbackMixin):
         else:
             weight = WeightIndex.IS_REJECTED
 
-        if (self.comparism(candidate.objective(), best.objective())):
+        if candidate.objective() < best.objective():
             # Is a new global best, so we might want to do something to further
             # improve the solution.
             if self.has_callback(CallbackFlag.ON_BEST):

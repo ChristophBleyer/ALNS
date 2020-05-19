@@ -11,13 +11,9 @@ class SimulatedAnnealing(AcceptanceCriterion):
         """
         Simulated annealing, using an updating temperature. The temperature is
         updated as,
-
         ``temperature = max(end_temperature, temperature - step)`` (linear)
-
         ``temperature = max(end_temperature, step * temperature)`` (exponential)
-
         where the initial temperature is set to ``start_temperature``.
-
         Parameters
         ----------
         start_temperature : float
@@ -29,7 +25,6 @@ class SimulatedAnnealing(AcceptanceCriterion):
         method : str
             The updating method, one of {'linear', 'exponential'}. Default
             'linear'.
-
         References
         ----------
         - Santini, A., Ropke, S. & Hvattum, L.M. A comparison of acceptance
@@ -72,8 +67,8 @@ class SimulatedAnnealing(AcceptanceCriterion):
     def method(self):
         return self._method
 
-    def accept(self, rnd, best, current, candidate, compareStrategy):
-        probability = np.exp((current.objective()[1] - candidate.objective()[1])
+    def accept(self, rnd, best, current, candidate):
+        probability = np.exp((current.objective() - candidate.objective())
                              / self._temperature)
 
         # We should not set a temperature that is lower than the end
@@ -82,10 +77,8 @@ class SimulatedAnnealing(AcceptanceCriterion):
                                                              self.step,
                                                              self.method))
 
-        # TODO the following is in preparation of the new numpy Generator
-        #  interface, which deprecates random_sample() in favour of random().
-        #  ALNS does not yet formally support Generators, but unofficially it
-        #  should work in most cases.
+        # TODO deprecate RandomState in favour of Generator - which uses
+        #  random(), rather than random_sample().
         try:
             return probability >= rnd.random()
         except AttributeError:

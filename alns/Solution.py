@@ -25,23 +25,22 @@ class Solution:
     def problem(self):
         return self._problem
     
-    def calculateRequestCoverageScore(self):
-        requestCoverageScore = 0
+    def calculateRequestCoverageCost(self):
+        requestCoverageCost = 0
 
-        for route in self.routes:
-            for servedCustomer in route.stops:
-                requestCoverageScore+= servedCustomer.priority
+        for cust in self.unassignedRequests:
+                requestCoverageCost+= self.problem.costPerPriority[cust.priority]
         
-        return requestCoverageScore
+        return requestCoverageCost
 
     
-    def calculateTotalDistanceTraveled(self):
-        totalDistanceTraveled = 0
+    def calculateTotalDistanceTraveledCost(self):
+        totalDistanceTraveledCost = 0
 
         for route in self.routes:
-            totalDistanceTraveled+= route.calculateDistanceTraveled()
+            totalDistanceTraveledCost+= route.calculateDistanceTraveledCost()
 
-        return totalDistanceTraveled
+        return totalDistanceTraveledCost
     
     def calculateDeployedFleetCost(self):
         deployedFleetCost = 0
@@ -53,16 +52,16 @@ class Solution:
         
         return deployedFleetCost
     
-    def calculateTotalOvertime(self):
-        totalOvertime = 0
+    def calculateTotalOvertimeCost(self):
+        totalOvertimeCost = 0
 
         for route in self.routes:
-            totalOvertime+= route.calculateOvertime()
+            totalOvertimeCost+= route.calculateOvertime() * route.vehicle.overTimeCost
         
-        return totalOvertime
+        return totalOvertimeCost
     
     def objective(self):
-        return [self.calculateRequestCoverageScore(), self.calculateTotalDistanceTraveled(), self.calculateTotalOvertime(), self.calculateDeployedFleetCost()]
+        return self.calculateRequestCoverageCost() + self.calculateTotalDistanceTraveledCost() + self.calculateTotalOvertimeCost()
     
     def toGraph(self):
         G = self.problem.plot()
