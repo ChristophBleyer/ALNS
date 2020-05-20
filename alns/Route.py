@@ -320,8 +320,6 @@ class Route:
         if(additionalStay == -1 and additionalDrive == -1):
             depotDeparture = trialPlan[0].serviceTime.earliest - self.problem.timeMatrix[self.depot.index, trialPlan[0].index]
             depotArrival = trialPlan[len(trialPlan) - 1].schedule.departureTime + self.problem.timeMatrix[trialPlan[len(trialPlan) - 1].index, self.depot.index]
-            # print(depotDeparture)
-            # print(depotArrival)
 
             # lunch can be inserted only between the depot and the first customer
             if(depotDeparture <= earliestLunchStart and trialPlan[0].schedule.arrivalTime >= latestLunchStart):
@@ -511,6 +509,83 @@ class Route:
         
         return elementsToRemove
     
+    def getDistanceBasedDetour(self, targetIdx):
+
+        target = self.stops[targetIdx]
+        
+        # the last node in the tour. successor is the depot.
+        if(targetIdx == (len(self.stops) -1)):
+            succ = self.depot
+        else:
+            succ = self.stops[targetIdx + 1]
+        
+        # first node in the tour. predeccessor is the depot.
+        if (targetIdx == 0):
+            pred = self.depot
+        else:
+            pred = self.stops[targetIdx -1]
+        
+        predToTarget = self.problem.distanceMatrix[pred.index, target.index]
+        targetToSucc = self.problem.distanceMatrix[target.index, succ.index]
+        predToSucc = self.problem.distanceMatrix[pred.index, succ.index]
+
+        cost = predToTarget + targetToSucc - predToSucc
+        
+        return cost
+    
+    def getTimeBasedDetourAndDelayCost(self, targetIdx):
+
+        target = self.stops[targetIdx]
+        
+        # the last node in the tour. successor is the depot.
+        if(targetIdx == (len(self.stops) -1)):
+            succ = self.depot
+        else:
+            succ = self.stops[targetIdx + 1]
+        
+        # first node in the tour. predeccessor is the depot.
+        if (targetIdx == 0):
+            pred = self.depot
+        else:
+            pred = self.stops[targetIdx -1]
+        
+        predToTarget = self.problem.timeMatrix[pred.index, target.index]
+        targetToSucc = self.problem.timeMatrix[target.index, succ.index]
+        predToSucc = self.problem.timeMatrix[pred.index, succ.index]
+
+        detour = predToTarget + targetToSucc - predToSucc
+
+        # if the target is the last node in the route we do not have any delay. Because the depot is not a customer. 
+        if(targetIdx == (len(self.stops) -1)):
+            introducedDelay =  0
+        else:
+            currentServiceAtSucc = succ.schedule.arrivalTime
+            
+            if(targetIdx != 0):
+                serviceAtSuccWithoutTarget = pred.schedule.departureTime + self.problem.timeMatrix[pred.index, succ.index]
+            else:
+                serviceAtSuccWithoutTarget = succ.serviceTime.earliest
+        
+            # do we wait with the shifted succ arrival or are we perfectly on time? Then there is no delay
+            if (currentServiceAtSucc <= succ.serviceTime.earliest):
+
+                introducedDelay = 0
+
+                if(serviceAtSuccWithoutTarget > succ.serviceTime.earliest):
+                    raise Exception("impossible system state")
+
+            # if he had to wait before we see only the difference with the earliest start as the delay
+            elif (serviceAtSuccWithoutTarget <= succ.serviceTime.earliest):
+                introducedDelay = currentServiceAtSucc - succ.serviceTime.earliest
+            else:
+                introducedDelay = currentServiceAtSucc - serviceAtSuccWithoutTarget
+            
+        if(introducedDelay < 0 ):
+            raise Exception("impossible system state")
+    
+        return 0.75 * detour + 0.25 * introducedDelay
+
+    
     def getDistanceBasedInsertionCost(self, pred, succ, newStop):
 
         if(succ != len(self.stops)):
@@ -585,7 +660,7 @@ class Route:
         shiftedSuccArrival = departureAtNewStop + self.problem.timeMatrix[newStop.index, succ.index]
 
 
-        # do we wait with the shifted succ arrival or are we perfectly on time? Then there is no delay.
+        # do we wait with the shifted succ arrival or are we perfectly on time? Then there is no delay
         if (shiftedSuccArrival <= succ.serviceTime.earliest):
            introducedDelay = 0
         # if he had to wait before we see only the difference with the earliest start as the delay

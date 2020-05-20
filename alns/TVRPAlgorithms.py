@@ -1,6 +1,7 @@
 import numpy as np
 import networkx as nx
 import copy
+import random
 import matplotlib.pyplot as plt
 from alns.Solution import Solution
 from alns.Route import Route
@@ -724,6 +725,155 @@ def k_regretInsertion(current, random_state):
                 raise Exception("impossible system state")
     
     return current
+
+
+def distancedBasedWorstRemoval(current, random_state):
+    
+    destroyed = copy.deepcopy(current)
+    destructionDegree = determineDegreeOfDestruction(destroyed.problem)
+    diversificationDegree = determineDegreeOfDiversification()
+
+    changedRoute = None
+    removed = 0
+    costsPerRoute = {}
+
+    while(removed < destructionDegree):
+
+        # ...search for most expensive spots in all the routes
+        for route in destroyed.routes:
+            
+            # if a route has not changed we do not need to update the costs for all customers in that route since the costs stays the same.
+            if(changedRoute is None or route is changedRoute):
+
+                targetIdx = 0
+                insertionCostForRoute = []
+
+                # store the costs for every node 
+                while(targetIdx < len(route.stops)):
+                    
+                    cost = route.getDistanceBasedDetour(targetIdx)
+                    
+                    insertionCostForRoute.append([targetIdx, cost, route])
+                    targetIdx+=1
+                
+                # store the cheapest place of the current route
+            
+                costsPerRoute[route] = insertionCostForRoute
+        
+        # select a random amount of customers from the holding list
+        numCustsFromHolding = int(round(random_state.uniform(0.1, 0.75) * len(destroyed.unassignedRequests)))
+        targetsOnHoldToRemove = random_state.choice(destroyed.unassignedRequests, numCustsFromHolding, replace=False)
+
+        descendendCost = []
+
+        for route in costsPerRoute:
+            descendendCost.extend(costsPerRoute[route])
+        
+        # sort by cost descending
+        sortedCosts = sorted(descendendCost, key= lambda el: el[1], reverse=True)
+
+        # insert customers from the holding list at random positions
+
+        for onHoldCust in targetsOnHoldToRemove:
+            sortedCosts.insert(random.randrange(0, len(sortedCosts)-1), onHoldCust)
+
+        # choose a customer to remove
+        diversificationBaseFactor = random_state.uniform(0, 1)
+        targetIdx = int((diversificationBaseFactor**diversificationDegree)*len(sortedCosts))
+        target = sortedCosts[targetIdx]
+        
+        # remove the target from the holding list or the solution space and put him into the removal cache
+        if(target in targetsOnHoldToRemove):
+            destroyed.unassignedRequests.remove(target)
+            destroyed.removalCache.append(target)
+            changedRoute = -1
+        else:
+            targetRoute = target[2]
+            targetCust = targetRoute.removeServiceStop(target[0])
+            destroyed.removalCache.append(targetCust)
+            changedRoute = targetRoute
+    
+        removed+=1
+    
+    if(len(destroyed.removalCache) != destructionDegree):
+        raise Exception("Impossible system state")
+
+    return destroyed
+
+
+def timeBasedWorstRemoval(current, random_state):
+    
+    destroyed = copy.deepcopy(current)
+    destructionDegree = determineDegreeOfDestruction(destroyed.problem)
+    diversificationDegree = determineDegreeOfDiversification()
+
+    changedRoute = None
+    removed = 0
+    costsPerRoute = {}
+
+    while(removed < destructionDegree):
+
+        # ...search for most expensive spots in all the routes
+        for route in destroyed.routes:
+            
+            # if a route has not changed we do not need to update the costs for all customers in that route since the costs stays the same.
+            if(changedRoute is None or route is changedRoute):
+
+                targetIdx = 0
+                insertionCostForRoute = []
+
+                # store the costs for every node 
+                while(targetIdx < len(route.stops)):
+                    
+                    cost = route.getTimeBasedDetourAndDelayCost(targetIdx)
+                    
+                    insertionCostForRoute.append([targetIdx, cost, route])
+                    targetIdx+=1
+                
+                # store the cheapest place of the current route
+            
+                costsPerRoute[route] = insertionCostForRoute
+        
+        # select a random amount of customers from the holding list
+        numCustsFromHolding = int(round(random_state.uniform(0.1, 0.75) * len(destroyed.unassignedRequests)))
+        targetsOnHoldToRemove = random_state.choice(destroyed.unassignedRequests, numCustsFromHolding, replace=False)
+
+        descendendCost = []
+
+        for route in costsPerRoute:
+            descendendCost.extend(costsPerRoute[route])
+        
+        # sort by cost descending
+        sortedCosts = sorted(descendendCost, key= lambda el: el[1], reverse=True)
+
+        # insert customers from the holding list at random positions
+
+        for onHoldCust in targetsOnHoldToRemove:
+            sortedCosts.insert(random.randrange(0, len(sortedCosts)-1), onHoldCust)
+
+        # choose a customer to remove
+        diversificationBaseFactor = random_state.uniform(0, 1)
+        targetIdx = int((diversificationBaseFactor**diversificationDegree)*len(sortedCosts))
+        target = sortedCosts[targetIdx]
+        
+        # remove the target from the holding list or the solution space and put him into the removal cache
+        if(target in targetsOnHoldToRemove):
+            destroyed.unassignedRequests.remove(target)
+            destroyed.removalCache.append(target)
+            changedRoute = -1
+        else:
+            targetRoute = target[2]
+            targetCust = targetRoute.removeServiceStop(target[0])
+            destroyed.removalCache.append(targetCust)
+            changedRoute = targetRoute
+    
+        removed+=1
+    
+    if(len(destroyed.removalCache) != destructionDegree):
+        raise Exception("Impossible system state")
+
+    return destroyed
+
 
             
     
