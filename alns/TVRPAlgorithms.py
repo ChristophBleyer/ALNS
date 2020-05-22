@@ -400,10 +400,10 @@ def buildSolutionParallelStyle(solution):
 
 def determineDegreeOfDestruction(problem):
     # As mentioned by Ropke and Pisinger the degree of destruction is choosen at random depending on the instance size. In this case between 10 and 50 percent.
-   return round(np.random.uniform(0.1, 0.50) * len(problem.demand))
+   return round(np.random.uniform(0.1, 0.4) * len(problem.demand))
 
 def determineDegreeOfDiversification():
-    return 0.95
+    return 10
 
 def randomRemoval(current, random_state):
     destroyed = copy.deepcopy(current)
@@ -872,6 +872,115 @@ def timeBasedWorstRemoval(current, random_state):
     if(len(destroyed.removalCache) != destructionDegree):
         raise Exception("Impossible system state")
 
+    return destroyed
+
+
+def relatedness(stopA, stopB, problem):
+
+    travelWeight = 3
+    schedulingWeight = 1
+    vehicleAffinityWeight = 5
+
+    timeWindowLengthA = (stopA.serviceTime.latest - stopA.serviceTime.earliest) / problem.maxTimeWindowLength
+    timeWindowLengthB = (stopB.serviceTime.latest - stopB.serviceTime.earliest) / problem.maxTimeWindowLength
+
+    travelTimeScore = (problem.timeMatrix[stopA.index, stopB.index] + problem.timeMatrix[stopB.index, stopA.index]) / (problem.maxTravelTimeOccurences[0] + problem.maxTravelTimeOccurences[1])
+    timeWindowStartScore = np.abs(stopA.serviceTime.earliest - stopB.serviceTime.earliest) / problem.maxServiceStartDistance
+    timeWindowLengthScore = np.abs(timeWindowLengthA - timeWindowLengthB)
+    serviceDurationScore = np.abs((stopA.serviceDuration / problem.maxServiceTime) - (stopB.serviceDuration / problem.maxServiceTime))
+
+    vehicleAffinityScore = 1 - ( len(list(set(problem.serviceMap[stopA.index]).intersection(problem.serviceMap[stopB.index]))) / (min([len(problem.serviceMap[stopA.index]), len(problem.serviceMap[stopB.index])])) )
+
+    relatedness = travelWeight * travelTimeScore + schedulingWeight * (timeWindowStartScore + timeWindowLengthScore + serviceDurationScore) + vehicleAffinityWeight * vehicleAffinityScore
+
+    if(not (0 <= relatedness <= travelWeight + 3 * schedulingWeight + vehicleAffinityScore)):
+        print(relatedness)
+        raise Exception("impossible system state")
+
+    return relatedness
+
+
+def relatedRemoval(current, random_state):
+
+    destroyed = copy.deepcopy(current)
+
+    destructionDegree = determineDegreeOfDestruction(destroyed.problem)
+    diversificationDegree = determineDegreeOfDiversification()
+
+    if(destructionDegree < 1):
+        return destroyed
+
+
+    solutionSpace = []
+    targetsPerRoute = {}
+    nodeToRoute = {}
+    for route in destroyed.routes:
+        targetsPerRoute[route] = []
+        for stop in route.stops:
+            solutionSpace.append(stop)
+            nodeToRoute[stop] = route
+
+    # elements are also removed from the holding vector to drive them back into the solution space
+    combinedSearchSpace = destroyed.unassignedRequests + solutionSpace
+
+    if(len(combinedSearchSpace) != len(current.problem.demand) or len(combinedSearchSpace) != len(destroyed.problem.demand)):
+        raise Exception("impossible system state")
+
+    random_state.shuffle(combinedSearchSpace)
+
+    relatedCustsToRemove = []
+
+    # choose a random element from the solution space to start with
+    startingTarget = random_state.choice(combinedSearchSpace, 1, replace=False)
+    
+    relatedCustsToRemove.append(startingTarget[0])
+    combinedSearchSpace.remove(startingTarget[0])
+
+    while(len(relatedCustsToRemove) < destructionDegree):
+        
+        # a random pick from the customers to remove that we will use to calculate the relatedness with every other node not removed yet
+        pick = random_state.choice(relatedCustsToRemove, 1, replace=False)[0]
+        relatednessToPick = []
+
+        # calculate the relatedness
+        for stop in combinedSearchSpace:
+            relatednessScore = relatedness(pick, stop, destroyed.problem)
+            relatednessToPick.append([relatednessScore, stop])
+        
+        sortedList = sorted(relatednessToPick, key= lambda el: el[0])
+
+        # pick the most related customer controlled by a diversification factor
+        diversificationBaseFactor = random_state.uniform(0, 1)
+        targetIdx = int((diversificationBaseFactor**diversificationDegree)*len(sortedList))
+        target = sortedList[targetIdx]
+
+        relatedCustsToRemove.append(target[1])
+        combinedSearchSpace.remove(target[1])
+    
+    # after we gathered all customers to remove we drive them into the removal cache and out of their current positions
+    for target in relatedCustsToRemove:
+        if(target in solutionSpace):
+            targetRoute = nodeToRoute[target]
+            idx = targetRoute.stops.index(target)
+            targetsPerRoute[targetRoute].append(idx)
+        elif(target in destroyed.unassignedRequests):
+            el = destroyed.unassignedRequests.pop(destroyed.unassignedRequests.index(target))
+            destroyed.removalCache.append(el)
+        else:
+            raise Exception("impossible system state")
+    
+
+    for targetRoute in targetsPerRoute:
+        if(targetsPerRoute[targetRoute]):
+            removed = targetRoute.removeServiceStops(targetsPerRoute[targetRoute])
+            for el in removed:
+                destroyed.removalCache.append(el)
+
+    
+    if(len(destroyed.removalCache) != destructionDegree):
+        raise Exception("impossible system state")
+
+    
     return destroyed
 
 

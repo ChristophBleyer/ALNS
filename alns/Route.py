@@ -141,9 +141,6 @@ class Route:
 
         return True
 
-
-
-
     
     def tryInsertServiceStop(self, newStop, index):
         
@@ -276,7 +273,8 @@ class Route:
                     additionalStay = 0.0
                     return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
             # The pause is only possible in between these two customers or between the last customer and the depot
-            elif((stop.schedule.departureTime <= earliestLunchStart and (i + 1) != len(prototype) and prototype[i+1].schedule.arrivalTime >= latestLunchStart) or ((i + 1) == len(prototype) and stop.schedule.departureTime <= earliestLunchStart and depotArrival >= latestLunchStart)):
+            elif((stop.schedule.departureTime <= earliestLunchStart and (i + 1) != len(prototype) and prototype[i+1].schedule.arrivalTime >= latestLunchStart) or (((i + 1) == len(prototype)) and stop.schedule.departureTime <= earliestLunchStart and depotArrival >= latestLunchStart)):
+                print("Hit")
                 additionalDrive = self.problem.lunchDuration
                 return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
             # We can take the pause here and also on another node so let's try it here and if it fails we continue searching
@@ -348,10 +346,14 @@ class Route:
 
         if (additionalStay != -1):
             trialPlan[injectAt].schedule.departureIncludesBreak = True
-        else:
+        elif(additionalDrive != -1):
             trialPlan[injectAt].schedule.travelIncludesBreak = True
         
         if(additionalStay == 0.0):
+            return True, trialPlan
+        
+        # a pause on the way home is always possible
+        if(additionalDrive != -1 and injectAt == (len(trialPlan) -1)):
             return True, trialPlan
 
         i = injectAt
@@ -375,8 +377,9 @@ class Route:
 
             current.schedule.arrivalTime = predeccesor.schedule.departureTime + self.problem.timeMatrix[predeccesor.index, current.index]
 
-            if (i - 1  == injectAt and additionalDrive != -1):
-                 current.schedule.arrivalTime+= additionalDrive
+            if ((i - 1)  == injectAt and additionalDrive != -1):
+                print("hit")
+                current.schedule.arrivalTime+= additionalDrive
             
             # if we are to late this does not work
             if (current.schedule.arrivalTime > current.serviceTime.latest):

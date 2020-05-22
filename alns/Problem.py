@@ -30,10 +30,21 @@ class Problem:
         self._maxServiceStartDistance = self.calculateMaxServiceStartDistance()
         self._maxTravelTimeOccurences = self.calculcateMaxTravelTimeOccurences()
         self._maxTimeWindowDistance = self.calculateMaxTimeWindowDistance()
+        self._maxTimeWindowLength =  self.calculateMaxTimeWindowLength()
+        self._maxServiceTime = self.calculateMaxServiceTime()
         self._avgDrivingCost = 0.0001
         self._costPerPriority = {1.0: 150, 2.0: 200, 3.0: 350}
 
     
+    @property
+    def maxServiceTime(self):
+        return self._maxServiceTime
+
+
+    @property
+    def maxTimeWindowLength(self):
+        return self._maxTimeWindowLength
+
     @property
     def depots(self):
         return self._depots
@@ -218,6 +229,24 @@ class Problem:
                 j+=1
             i+=1
         return max
+    
+    def calculateMaxTimeWindowLength(self):
+        twlenghts = []
+        for cust in self.demand:
+            twLength = cust.serviceTime.latest - cust.serviceTime.earliest
+            twlenghts.append(twLength)
+        
+        maximum = max(twlenghts)
+        return maximum
+    
+    def calculateMaxServiceTime(self):
+        serviceTimes = []
+        for cust in self.demand:
+            serviceTimes.append(cust.serviceDuration)
+        
+        maximum = max(serviceTimes)
+        return maximum
+        
     
     def calculateMaxTimeWindowDistance(self):
         # Depots are excluded since they are always 0 in distance since their time windows are nested
