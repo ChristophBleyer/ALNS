@@ -33,7 +33,7 @@ class Problem:
         self._maxTimeWindowLength =  self.calculateMaxTimeWindowLength()
         self._maxServiceTime = self.calculateMaxServiceTime()
         self._avgDrivingCost = 0.0001
-        self._costPerPriority = {1.0: 150, 2.0: 200, 3.0: 350}
+        self._prioCostFactor = {1.0: 1.0, 2.0: 2.0, 3.0: 3.0}
 
     
     @property
@@ -90,8 +90,8 @@ class Problem:
         return self._maxTimeWindowDistance
     
     @property
-    def costPerPriority(self):
-        return self._costPerPriority
+    def prioCostFactor(self):
+        return self._prioCostFactor
     
     @property
     def avgDrivingCost(self):
@@ -184,8 +184,9 @@ class Problem:
             serviceDuration = stopDataRow[column + 3]
             earliestService = stopDataRow[column + 4]
             latestService = stopDataRow[column + 5]
+            profitForcast = stopDataRow[column + 6]
             row+=1
-            newServiceStop = ServiceStop(nodeIndex, lat, lng, serviceDuration, PlanningHorizon(0, 0, 0), TimeInterval(earliestService, latestService),prio, set(skillsReq))
+            newServiceStop = ServiceStop(nodeIndex, lat, lng, serviceDuration, PlanningHorizon(0, 0, 0), TimeInterval(earliestService, latestService),prio, set(skillsReq), profitForcast)
             listOfServiceStops.append(newServiceStop)
             nodeIndex+=1
             j+=1

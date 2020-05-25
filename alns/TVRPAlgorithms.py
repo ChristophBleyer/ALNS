@@ -481,7 +481,7 @@ def greedyInsertion(current, random_state):
                             cost = np.Infinity
 
                             if(route.isAssignable(unroutedCust, insertAt, metadata)):
-                                cost = metadata["overtimeCost"] + metadata["distanceTraveledCost"] - current.problem.costPerPriority[unroutedCust.priority]
+                                cost = metadata["overtimeCost"] + metadata["distanceTraveledCost"] - (current.problem.prioCostFactor[unroutedCust.priority] *  unroutedCust.profitForcast)
 
                             
                             insertionCostForRoute.append(cost)
@@ -666,7 +666,7 @@ def k_regretInsertion(current, random_state):
                 if(regret[unroutedCust] < 0):
                     raise Exception("impossible system state")
 
-            # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest regret and of these the one with the highest priority.
+            # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest added regret that is the regret plus the cost for not inserting that customer
             maxLossCustomer = max(insertLoss, key=insertLoss.get)
             maxLossCustomers =  []
 
@@ -674,43 +674,32 @@ def k_regretInsertion(current, random_state):
                 if(insertLoss[cust] == insertLoss[maxLossCustomer]):
                     maxLossCustomers.append(cust)
             
-            regretOnSameLossLevel = {}
-            for cust in maxLossCustomers:
-                regretForCust = regret[cust]
-                regretOnSameLossLevel[cust] = regretForCust
             
-            # if the route length is 1 meaning there is only one route left we insert the customer that has the cheapest insertion cost for and the highest priority
-            if(max(regretOnSameLossLevel, key=regretOnSameLossLevel.get) == 0.0):
+            lastRoute = False
+            addedRegretOnSameLossLevel = {}
+            for cust in maxLossCustomers:
 
-                prioPerCust = {}
-                for cust in regretOnSameLossLevel:
-                    prioPerCust[cust] = cust.priority
-                
-                maxPrioOnSameLoss = max(prioPerCust, key=prioPerCust.get)
+                if(regret[cust] == 0.0):
+                    lastRoute = True
+                elif(lastRoute and regret[cust] != 0.0):
+                    raise Exception("impossible system state")
 
-                targets = {}
-                for cust in regretOnSameLossLevel:
-                    if (cust.priority == prioPerCust[maxPrioOnSameLoss]):
-                        targets[cust] = bestFitPerCust[cust][1]
-
-                
-                customerToInsert = min(targets, key=targets.get)
-
+                addedRegretForCust = regret[cust] + (current.problem.prioCostFactor[cust.priority] * cust.profitForcast)
+                addedRegretOnSameLossLevel[cust] = addedRegretForCust
+            
+            if(not lastRoute):
+                customerToInsert = max(addedRegretOnSameLossLevel, key=addedRegretOnSameLossLevel.get)
             else:
                 
-                # choose the customer with the highest priority on the maximum loss level and from those the customers the one with the highest regret
-                prioPerCust = {}
-                for cust in regretOnSameLossLevel:
-                    prioPerCust[cust] = cust.priority
+                # if we are on the last route we insert the customer where the cost penality for not inserting him is the highest of those we insert the one with the the cheapest insert cost
                 
-                maxPrioOnSameLoss = max(prioPerCust, key=prioPerCust.get)
+                customerWithMaxRegret= max(addedRegretOnSameLossLevel, key=addedRegretOnSameLossLevel.get)
 
-                targets = {}
-                for cust in regretOnSameLossLevel:
-                    if (cust.priority == prioPerCust[maxPrioOnSameLoss]):
-                        targets[cust] = regret[cust]
-                
-                customerToInsert = max(targets, key=targets.get)
+                customerToInsert = customerWithMaxRegret
+                for cust in addedRegretOnSameLossLevel:
+                    if(addedRegretOnSameLossLevel[cust] == addedRegretOnSameLossLevel[customerToInsert]):
+                        if(bestFitPerCust[cust][1] < bestFitPerCust[customerToInsert][1]):
+                            customerToInsert = cust
 
             
             del current.removalCache[current.removalCache.index(customerToInsert)]

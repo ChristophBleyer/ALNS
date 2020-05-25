@@ -136,8 +136,10 @@ class Route:
         self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
         
         if(metadata != None):
-            metadata["overtimeCost"] =  self.calculateOvertime(pauseInjectedPrototype) * self.vehicle.overTimeCost
-            metadata["distanceTraveledCost"] =  self.calculateDistanceTraveledCost(pauseInjectedPrototype)
+            overtimeBefore = self.calculateOvertime() * self.vehicle.overTimeCost
+            distanceTraveledBefore = self.calculateDistanceTraveledCost()
+            metadata["overtimeCost"] =  (self.calculateOvertime(pauseInjectedPrototype) * self.vehicle.overTimeCost) - overtimeBefore
+            metadata["distanceTraveledCost"] =  self.calculateDistanceTraveledCost(pauseInjectedPrototype) - distanceTraveledBefore
 
         return True
 
@@ -267,11 +269,21 @@ class Route:
                         return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
                     else:
                         additionalStay = self.problem.lunchDuration - stop.schedule.waitingTime
-                        return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
+                        success, pauseInjectedPrototype = self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
+                    
+                        if(success):
+                            stop.schedule.waitingTime = 0
+
+                        return success, pauseInjectedPrototype
                 # If the waiting time is longer or equal to the lunch break we take the lunch at this stage. But we need to wait for that amount of time anyways
                 else:
                     additionalStay = 0.0
-                    return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
+                    success, pauseInjectedPrototype = self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
+                    
+                    if(success):
+                         stop.schedule.waitingTime = stop.schedule.waitingTime - self.problem.lunchDuration
+
+                    return success, pauseInjectedPrototype
             # The pause is only possible in between these two customers or between the last customer and the depot
             elif((stop.schedule.departureTime <= earliestLunchStart and (i + 1) != len(prototype) and prototype[i+1].schedule.arrivalTime >= latestLunchStart) or (((i + 1) == len(prototype)) and stop.schedule.departureTime <= earliestLunchStart and depotArrival >= latestLunchStart)):
                 print("Hit")
@@ -292,12 +304,14 @@ class Route:
                         additionalStay = self.problem.lunchDuration - stop.schedule.waitingTime
                         success, pauseInjectedPrototype = self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
                         if(success):
+                            stop.schedule.waitingTime = 0
                             return success, pauseInjectedPrototype
                 # If the waiting time is longer or equal to the lunch break we take the lunch at this stage. But we need to wait for that amount of time anyways
                 else:
-                    additionalStay = 0
+                    additionalStay = 0.0
                     success, pauseInjectedPrototype = self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
                     if(success):
+                         stop.schedule.waitingTime = stop.schedule.waitingTime - self.problem.lunchDuration
                          return success, pauseInjectedPrototype
             i+=1
         
@@ -481,7 +495,7 @@ class Route:
 
         # with less time on the field a pause is insertable no matter what
         if(not isPossible):
-            self.stateLog()
+            print(lunchDetected)
             raise Exception("impossible system state")
 
         self._stops = pauseInjectedPrototype

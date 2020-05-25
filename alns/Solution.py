@@ -29,8 +29,8 @@ class Solution:
         requestCoverageCost = 0
 
         for cust in self.unassignedRequests:
-                requestCoverageCost+= self.problem.costPerPriority[cust.priority]
-        
+                requestCoverageCost+= self.problem.prioCostFactor[cust.priority] * cust.profitForcast
+
         return requestCoverageCost
 
     
