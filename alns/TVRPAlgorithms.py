@@ -6,6 +6,15 @@ import matplotlib.pyplot as plt
 from alns.Solution import Solution
 from alns.Route import Route
 
+
+# global algorithm parameters
+degreeOfDiversification = 10
+destructionRange = [0.2, 0.4]
+worstRemovalWeights = [0.75, 0.25]
+holdingListRemoval = 0.5
+relatednessWeights = [3,1,5]
+
+
 def _closeness(customer, depot, problem):
     distance = problem.distanceMatrix[customer.index, depot.index] + problem.distanceMatrix[depot.index, customer.index]
     affinity = _aysmmetricTansiniAffinity(customer,depot, problem)
@@ -65,6 +74,9 @@ def _getClosestAndSecondClosestDepot(customer, depotsWithUnsatisfiedDemand, prob
         closest = smallestTwo[0]
         indexSmallest = asymmetricTravelTimes.index(closest)
         closestDepot = depotsWithUnsatisfiedDemand[indexSmallest]
+        
+        if(len(smallestTwo) == 1):
+            return closestDepot, None
 
         secondClosest = smallestTwo[1]
         
@@ -400,10 +412,7 @@ def buildSolutionParallelStyle(solution):
 
 def determineDegreeOfDestruction(problem):
     # As mentioned by Ropke and Pisinger the degree of destruction is choosen at random depending on the instance size. In this case between 10 and 50 percent.
-   return round(np.random.uniform(0.1, 0.4) * len(problem.demand))
-
-def determineDegreeOfDiversification():
-    return 10
+   return round(np.random.uniform(destructionRange[0], destructionRange[1]) * len(problem.demand))
 
 def randomRemoval(current, random_state):
     destroyed = copy.deepcopy(current)
@@ -682,6 +691,7 @@ def k_regretInsertion(current, random_state):
                 if(regret[cust] == 0.0):
                     lastRoute = True
                 elif(lastRoute and regret[cust] != 0.0):
+                    print(maxLossCustomers)
                     raise Exception("impossible system state")
 
                 addedRegretForCust = regret[cust] + (current.problem.prioCostFactor[cust.priority] * cust.profitForcast)
@@ -711,6 +721,9 @@ def k_regretInsertion(current, random_state):
             changedRoute = targetRoute
 
             if(not success):
+                print(len(removalCacheNotEmpty))
+                print(len(cheapestCostsPerCust))
+                print(lastRoute)
                 raise Exception("impossible system state")
     
     return current
@@ -720,7 +733,6 @@ def distancedBasedWorstRemoval(current, random_state):
     
     destroyed = copy.deepcopy(current)
     destructionDegree = determineDegreeOfDestruction(destroyed.problem)
-    diversificationDegree = determineDegreeOfDiversification()
 
     changedRoute = None
     removed = 0
@@ -749,8 +761,8 @@ def distancedBasedWorstRemoval(current, random_state):
             
                 costsPerRoute[route] = insertionCostForRoute
         
-        # select a random amount of customers from the holding list
-        numCustsFromHolding = int(round(random_state.uniform(0.1, 0.75) * len(destroyed.unassignedRequests)))
+        # select the amount of customers from the holding list
+        numCustsFromHolding = int(round(holdingListRemoval * len(destroyed.unassignedRequests)))
         targetsOnHoldToRemove = random_state.choice(destroyed.unassignedRequests, numCustsFromHolding, replace=False)
 
         descendendCost = []
@@ -768,7 +780,7 @@ def distancedBasedWorstRemoval(current, random_state):
 
         # choose a customer to remove
         diversificationBaseFactor = random_state.uniform(0, 1)
-        targetIdx = int((diversificationBaseFactor**diversificationDegree)*len(sortedCosts))
+        targetIdx = int((diversificationBaseFactor**degreeOfDiversification)*len(sortedCosts))
         target = sortedCosts[targetIdx]
         
         # remove the target from the holding list or the solution space and put him into the removal cache
@@ -794,7 +806,6 @@ def timeBasedWorstRemoval(current, random_state):
     
     destroyed = copy.deepcopy(current)
     destructionDegree = determineDegreeOfDestruction(destroyed.problem)
-    diversificationDegree = determineDegreeOfDiversification()
 
     changedRoute = None
     removed = 0
@@ -814,7 +825,9 @@ def timeBasedWorstRemoval(current, random_state):
                 # store the costs for every node 
                 while(targetIdx < len(route.stops)):
                     
-                    cost = route.getTimeBasedDetourAndDelayCost(targetIdx)
+                    costFactors = route.getTimeBasedDetourAndDelayCost(targetIdx)
+
+                    cost = (worstRemovalWeights[0] * costFactors[0]) + (worstRemovalWeights[1] * costFactors[1])
                     
                     insertionCostForRoute.append([targetIdx, cost, route])
                     targetIdx+=1
@@ -823,8 +836,8 @@ def timeBasedWorstRemoval(current, random_state):
             
                 costsPerRoute[route] = insertionCostForRoute
         
-        # select a random amount of customers from the holding list
-        numCustsFromHolding = int(round(random_state.uniform(0.1, 0.75) * len(destroyed.unassignedRequests)))
+        # select the amount of customers from the holding list
+        numCustsFromHolding = int(round(holdingListRemoval * len(destroyed.unassignedRequests)))
         targetsOnHoldToRemove = random_state.choice(destroyed.unassignedRequests, numCustsFromHolding, replace=False)
 
         descendendCost = []
@@ -842,7 +855,7 @@ def timeBasedWorstRemoval(current, random_state):
 
         # choose a customer to remove
         diversificationBaseFactor = random_state.uniform(0, 1)
-        targetIdx = int((diversificationBaseFactor**diversificationDegree)*len(sortedCosts))
+        targetIdx = int((diversificationBaseFactor**degreeOfDiversification)*len(sortedCosts))
         target = sortedCosts[targetIdx]
         
         # remove the target from the holding list or the solution space and put him into the removal cache
@@ -866,10 +879,6 @@ def timeBasedWorstRemoval(current, random_state):
 
 def relatedness(stopA, stopB, problem):
 
-    travelWeight = 3
-    schedulingWeight = 1
-    vehicleAffinityWeight = 5
-
     timeWindowLengthA = (stopA.serviceTime.latest - stopA.serviceTime.earliest) / problem.maxTimeWindowLength
     timeWindowLengthB = (stopB.serviceTime.latest - stopB.serviceTime.earliest) / problem.maxTimeWindowLength
 
@@ -880,10 +889,9 @@ def relatedness(stopA, stopB, problem):
 
     vehicleAffinityScore = 1 - ( len(list(set(problem.serviceMap[stopA.index]).intersection(problem.serviceMap[stopB.index]))) / (min([len(problem.serviceMap[stopA.index]), len(problem.serviceMap[stopB.index])])) )
 
-    relatedness = travelWeight * travelTimeScore + schedulingWeight * (timeWindowStartScore + timeWindowLengthScore + serviceDurationScore) + vehicleAffinityWeight * vehicleAffinityScore
+    relatedness = relatednessWeights[0] * travelTimeScore + relatednessWeights[1] * (timeWindowStartScore + timeWindowLengthScore + serviceDurationScore) + relatednessWeights[2] * vehicleAffinityScore
 
-    if(not (0 <= relatedness <= travelWeight + 3 * schedulingWeight + vehicleAffinityScore)):
-        print(relatedness)
+    if(not (0 <= relatedness <= relatednessWeights[0] + 3 * relatednessWeights[1] + vehicleAffinityScore)):
         raise Exception("impossible system state")
 
     return relatedness
@@ -894,7 +902,6 @@ def relatedRemoval(current, random_state):
     destroyed = copy.deepcopy(current)
 
     destructionDegree = determineDegreeOfDestruction(destroyed.problem)
-    diversificationDegree = determineDegreeOfDiversification()
 
     if(destructionDegree < 1):
         return destroyed
@@ -940,7 +947,7 @@ def relatedRemoval(current, random_state):
 
         # pick the most related customer controlled by a diversification factor
         diversificationBaseFactor = random_state.uniform(0, 1)
-        targetIdx = int((diversificationBaseFactor**diversificationDegree)*len(sortedList))
+        targetIdx = int((diversificationBaseFactor**degreeOfDiversification)*len(sortedList))
         target = sortedList[targetIdx]
 
         relatedCustsToRemove.append(target[1])

@@ -1,5 +1,5 @@
 import numpy as np
-
+import matplotlib.pyplot as plt
 from .AcceptanceCriterion import AcceptanceCriterion
 from .update import update
 
@@ -50,6 +50,10 @@ class SimulatedAnnealing(AcceptanceCriterion):
         self._method = method
 
         self._temperature = start_temperature
+        self._temperatures = []
+        self._temperatures.append(start_temperature)
+        self._probs = []
+        self._acceptState = []
 
     @property
     def start_temperature(self):
@@ -66,10 +70,36 @@ class SimulatedAnnealing(AcceptanceCriterion):
     @property
     def method(self):
         return self._method
+    
+    def plotAnalytics(self):
+        fig, ax = plt.subplots(figsize=(10, 10))
+        x = range(len(self._temperatures))
+        y = self._temperatures
+        ax.set_title("Temperature cooldown over time")
+        plt.scatter(x, y)
+        plt.draw_if_interactive()
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        x = range(len(self._probs))
+        y = self._probs
+        ax.set_title("Acceptance probability over time")
+        plt.scatter(x, y)
+        plt.ylim(0, 5)
+        plt.draw_if_interactive()
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        x = range(len(self._acceptState))
+        y = self._acceptState
+        plt.ylim(0, 1.1)
+        ax.set_title("Truth states over time")
+        plt.plot(x, y)
+        plt.draw_if_interactive()
 
     def accept(self, rnd, best, current, candidate):
         probability = np.exp((current.objective() - candidate.objective())
                              / self._temperature)
+
+        self._probs.append(probability)
 
         # We should not set a temperature that is lower than the end
         # temperature.
@@ -77,9 +107,15 @@ class SimulatedAnnealing(AcceptanceCriterion):
                                                              self.step,
                                                              self.method))
 
+        self._temperatures.append(self._temperature)
+
         # TODO deprecate RandomState in favour of Generator - which uses
         #  random(), rather than random_sample().
         try:
-            return probability >= rnd.random()
+            res = probability >= rnd.random()
+            self._acceptState.append(res)
+            return res
         except AttributeError:
-            return probability >= rnd.random_sample()
+            res = probability >= rnd.random_sample()
+            self._acceptState.append(res)
+            return res

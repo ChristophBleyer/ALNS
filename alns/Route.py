@@ -84,7 +84,7 @@ class Route:
             return 0
         
 
-    def isAssignable(self, newStop, index, metadata = None):
+    def isAssignable(self, newStop, index, metadata = None, insertCall= False):
         
         # Constraint: Does this routes vehicle actually has what it takes ... ?
         if (not self.vehicle.canServe(newStop)):
@@ -141,63 +141,19 @@ class Route:
             metadata["overtimeCost"] =  (self.calculateOvertime(pauseInjectedPrototype) * self.vehicle.overTimeCost) - overtimeBefore
             metadata["distanceTraveledCost"] =  self.calculateDistanceTraveledCost(pauseInjectedPrototype) - distanceTraveledBefore
 
+        
+        if(insertCall):
+
+            self._stops = pauseInjectedPrototype
+            
+            # update the depot schedule
+            self.updateDepotScheduleOnChange()
+
         return True
 
     
     def tryInsertServiceStop(self, newStop, index):
-        
-        # Constraint: Does this routes vehicle actually has what it takes ... ?
-        if (not self.vehicle.canServe(newStop)):
-            return False
-
-        # ... if so, lets try to build the route
-        seemsPossible, prototype, lunchRescedulingNeeded = self.tryGetNoLunchInsertionPrototype(index, newStop)
-
-        if (not seemsPossible):
-            print("BUMP Because of scheduling problem")
-            return False
-        
-        depotBreakDepartureBefore = self.depot.schedule.departureIncludesBreak
-        depotBreakTravelBefore = self.depot.schedule.travelIncludesBreak
-
-        # If there is only one node inside the Route, meaning we inserted the first one whe have to inject the pause. After that the serach takes care of it self.
-        # Also if the depot is the lunch target we will do a lookup
-        pauseAtDepotCanBeTakenAtTheEnd = prototype[len(prototype) - 1].schedule.departureTime + self.problem.timeMatrix[prototype[len(prototype) - 1].index, self.depot.index] <= self.problem.lunchBreak.latest
-        
-        if ((len(prototype) == 1) or (self.depot.schedule.departureIncludesBreak and not pauseAtDepotCanBeTakenAtTheEnd) or self.depot.schedule.travelIncludesBreak):
-            lunchRescedulingNeeded = True
-            self.depot.schedule.departureIncludesBreak = False
-            self.depot.schedule.travelIncludesBreak = False
-            
-            
-        # if the lunch was found somewhere across the planning horizon updates beginning at the new node, it has to be rescheduled
-        if(lunchRescedulingNeeded):
-            isPossible, pauseInjectedPrototype = self.tryInjectLunchBreak(prototype)
-        else:
-            isPossible = True
-            # we already have what we need
-            pauseInjectedPrototype = prototype
-        
-        if(not isPossible):
-            print("BUMP Because of lunch insersion problem")
-            self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
-            self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
-            return False
-        
-        workTime = self.calculateWorktime(pauseInjectedPrototype)
-
-        if (workTime > self.vehicle.maxOvertime):
-            print("BUMP Because of overtime problem")
-            self.depot.schedule.departureIncludesBreak = depotBreakDepartureBefore
-            self.depot.schedule.travelIncludesBreak = depotBreakTravelBefore
-            return False
-        
-        self._stops = pauseInjectedPrototype
-        
-        # update the depot schedule
-        self.updateDepotScheduleOnChange()
-
-        return True
+        return self.isAssignable(newStop, index, None, True)
             
     
     def tryGetNoLunchInsertionPrototype(self, index, newStop):
@@ -252,11 +208,13 @@ class Route:
         earliestLunchStart = self.problem.lunchBreak.earliest
         latestLunchStart = self.problem.lunchBreak.latest
         depotArrival = prototype[len(prototype) - 1].schedule.departureTime + self.problem.timeMatrix[prototype[len(prototype) - 1].index, self.depot.index]
-        additionalStay = -1
-        additionalDrive = -1
 
         i = 0
         while(i < len(prototype)):
+
+            additionalStay = -1
+            additionalDrive = -1
+
             stop = prototype[i]
             # If the pause is only possible at this node we have only that one shot
             if (stop.schedule.arrivalTime <= earliestLunchStart and stop.schedule.departureTime >= latestLunchStart):
@@ -285,8 +243,7 @@ class Route:
 
                     return success, pauseInjectedPrototype
             # The pause is only possible in between these two customers or between the last customer and the depot
-            elif((stop.schedule.departureTime <= earliestLunchStart and (i + 1) != len(prototype) and prototype[i+1].schedule.arrivalTime >= latestLunchStart) or (((i + 1) == len(prototype)) and stop.schedule.departureTime <= earliestLunchStart and depotArrival >= latestLunchStart)):
-                print("Hit")
+            elif((stop.schedule.departureTime <= latestLunchStart and (i + 1) != len(prototype) and prototype[i+1].schedule.arrivalTime >= latestLunchStart) or (((i + 1) == len(prototype)) and stop.schedule.departureTime <= latestLunchStart and depotArrival >= latestLunchStart)):
                 additionalDrive = self.problem.lunchDuration
                 return self.tryUpdateOnLunchInsertion(prototype, additionalStay, additionalDrive, i)
             # We can take the pause here and also on another node so let's try it here and if it fails we continue searching
@@ -392,7 +349,6 @@ class Route:
             current.schedule.arrivalTime = predeccesor.schedule.departureTime + self.problem.timeMatrix[predeccesor.index, current.index]
 
             if ((i - 1)  == injectAt and additionalDrive != -1):
-                print("hit")
                 current.schedule.arrivalTime+= additionalDrive
             
             # if we are to late this does not work
@@ -496,6 +452,8 @@ class Route:
         # with less time on the field a pause is insertable no matter what
         if(not isPossible):
             print(lunchDetected)
+            self.stateLog()
+            print(index)
             raise Exception("impossible system state")
 
         self._stops = pauseInjectedPrototype
@@ -600,7 +558,7 @@ class Route:
         if(introducedDelay < 0 ):
             raise Exception("impossible system state")
     
-        return 0.75 * detour + 0.25 * introducedDelay
+        return  [detour, introducedDelay]
 
     
     def getDistanceBasedInsertionCost(self, pred, succ, newStop):
@@ -692,15 +650,17 @@ class Route:
         return introducedDelay
 
     
-    def stateLog(self):
+    def stateLog(self, onInstance = None):
+
+        if(onInstance is None):
+            onInstance = self.stops
+
         print("DEPOPT DEPARTURE: " + str(self.depot.schedule.departureTime) + "\nDEPOPT ARRIVAL: " + str(self.depot.schedule.arrivalTime))
         print("DEPOT BREAK ON DEPARTURE: ", str(self.depot.schedule.departureIncludesBreak))
         print("DEPOT BREAK ON TRAVEL: ", str(self.depot.schedule.travelIncludesBreak))
         print("\nSTOPS: ")
-        for stop in self._stops:
+        for stop in onInstance:
             print("\n Index: " + str(stop.index) +  " Earliest : " + str(stop.serviceTime.earliest) + " Latest: " + str(stop.serviceTime.latest) + " Arrival: " + str(stop.schedule.arrivalTime) + " Departure: " + str(stop.schedule.departureTime) + " Pause: " + str(stop.schedule.waitingTime) + " Work for: " + str(stop.serviceDuration) +  " Departure Beak: " + str(stop.schedule.departureIncludesBreak) + " Travel Beak: " + str(stop.schedule.travelIncludesBreak))
-
-    
 
     
 

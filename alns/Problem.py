@@ -14,9 +14,9 @@ from alns.TVRPAlgorithms import *
 
 class Problem:
 
-    def __init__(self, instanceFilePath):
+    def __init__(self, instanceFilePath, routingDataFilePath):
 
-        depots, demand, fleet, timeMatrix, distanceMatrix, lunchBreak, lunchDuration = self.readInstance(instanceFilePath)
+        depots, demand, fleet, timeMatrix, distanceMatrix, lunchBreak, lunchDuration = self.readInstance(instanceFilePath, routingDataFilePath)
 
         self._depots = depots
         self._demand = demand
@@ -99,9 +99,9 @@ class Problem:
     
 
 
-    def readInstance(self, instanceFilepath):
+    def readInstance(self, instanceFilepath, routingDataFilePath):
 
-        data = pandas.read_csv(instanceFilepath + "Data_1.csv")
+        data = pandas.read_csv(instanceFilepath)
         dataAsList = data.values.tolist()
         problemDescription = dataAsList[0]
 
@@ -193,7 +193,7 @@ class Problem:
         
         distanceMatrix = []
         timeMatrix = []
-        with open(instanceFilepath + "Matrix_1.json") as json_file:
+        with open(routingDataFilePath) as json_file:
             matrixData = json.load(json_file)
             distanceMatrix = np.matrix(matrixData["distances"])
             timeMatrix = np.matrix(matrixData["durations"])
@@ -285,31 +285,6 @@ class Problem:
         
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
         return G
-
-
-# p = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/")
-
-# solution = parallelUrgencyAssignment(p)
-
-# buildSolutionParallelStyle(solution)
-
-# solution.toGraph()
-# plt.show()
-
-# arr = [[400, 30, 20], [1200, 90, 1000], [10, 200, 3], [10, 190, 5], [10, 190, 1]]
-
-# def objectiveCompare(objectiveA, objectiveB):
-#     objectives = [objectiveA, objectiveB]
-
-#     s = sorted(objectives, key= lambda el: el[2])
-#     s = sorted(s, key= lambda el: el[1])
-#     s = sorted(s, key= lambda el: el[0])
-
-#     if(s[0] == objectiveA):
-#         return True
-#     else:
-#         return False
-
 
 
 
