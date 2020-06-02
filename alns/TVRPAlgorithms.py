@@ -117,7 +117,7 @@ def _isAssignable(customer, depot, problem):
 
 def _calculateTemporalClusterWorkDemand(depot, problem, customer):
 
-    avgTravelTime = _calculateAvgTravelTime(depot, customer, problem)
+    avgTravelTime = _calculateMedianTravelTime(depot, customer, problem)
     temporalClusterWorkDemand = 0
 
     # estimation of time effort to serve every customer
@@ -146,6 +146,25 @@ def _calculateAvgTravelTime(depot, customer, problem):
         i+=1
     
     return (travelSum/len(clusterNodes))
+
+
+def _calculateMedianTravelTime(depot, customer, problem):
+    clusterNodes = list(depot.clusterCache)
+    clusterNodes.append(customer)
+    clusterNodes.append(depot)
+
+    travelTimes = []
+    i = 0
+    while (i < len(clusterNodes)):
+        j = 0
+        while(j < len(clusterNodes)):
+            if(i != j):
+               travelTimes.append(problem.timeMatrix[clusterNodes[i].index, clusterNodes[j].index])
+            j+=1
+        i+=1
+    
+    return np.median(travelTimes)
+
 
 
 def parallelUrgencyAssignment(problem, plotClusters = False):
