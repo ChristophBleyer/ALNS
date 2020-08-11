@@ -75,24 +75,8 @@ class SimulatedAnnealing(AcceptanceCriterion):
         fig, ax = plt.subplots(figsize=(10, 10))
         x = range(len(self._temperatures))
         y = self._temperatures
-        ax.set_title("Temperature cooldown over time")
+        ax.set_title("Temperature over time (# iterations)")
         plt.scatter(x, y)
-        plt.draw_if_interactive()
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-        x = range(len(self._probs))
-        y = self._probs
-        ax.set_title("Acceptance probability over time")
-        plt.scatter(x, y)
-        plt.ylim(0, 5)
-        plt.draw_if_interactive()
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-        x = range(len(self._acceptState))
-        y = self._acceptState
-        plt.ylim(0, 1.1)
-        ax.set_title("Truth states over time")
-        plt.plot(x, y)
         plt.draw_if_interactive()
 
     def accept(self, rnd, best, current, candidate):

@@ -117,7 +117,7 @@ def _isAssignable(customer, depot, problem):
 
 def _calculateTemporalClusterWorkDemand(depot, problem, customer):
 
-    avgTravelTime = _calculateMedianTravelTime(depot, customer, problem)
+    avgTravelTime = _calculateAvgTravelTime(depot, customer, problem)
     temporalClusterWorkDemand = 0
 
     # estimation of time effort to serve every customer
@@ -252,11 +252,11 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
             edgeColors.append('blue')
             G.add_node(stop.index, pos=(stop.lng, stop.lat))
             if(stop.priority == 1.0):
-                 colors.append('yellow')
+                 colors.append('orange')
             elif (stop.priority == 2.0):
                 colors.append('orange')
             else:
-                colors.append('red')
+                colors.append('orange')
         
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
 
