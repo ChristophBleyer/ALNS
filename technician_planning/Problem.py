@@ -1,16 +1,16 @@
-import numpy as np
+re·struc·tur·ingimport numpy as np
 import pandas
 import networkx as nx
 import matplotlib.pyplot as plt
 import json
-import math
-from alns.Vehicle import Vehicle
-from alns.TimeInterval import TimeInterval
-from alns.Depot import Depot
-from alns.PlaningHorizon import PlanningHorizon
-from alns.ServiceStop import ServiceStop
-from alns.Route import Route
-from alns.TVRPAlgorithms import *
+from .Vehicle import Vehicle
+from .TimeInterval import TimeInterval
+from .Depot import Depot
+from .PlaningHorizon import PlanningHorizon
+from .ServiceStop import ServiceStop
+from .Route import Route
+from operators import *
+from construction import Construction
 
 class Problem:
 
@@ -98,7 +98,7 @@ class Problem:
         return self._avgDrivingCost
     
 
-
+    # Read an instance from the local disk
     def readInstance(self, instanceFilepath, routingDataFilePath):
 
         data = pandas.read_csv(instanceFilepath)
@@ -186,7 +186,7 @@ class Problem:
             latestService = stopDataRow[column + 5]
             profitForcast = stopDataRow[column + 6]
             row+=1
-            newServiceStop = ServiceStop(nodeIndex, lat, lng, serviceDuration, PlanningHorizon(0, 0, 0), TimeInterval(earliestService, latestService),prio, set(skillsReq), profitForcast)
+            newServiceStop = ServiceStop(nodeIndex, lat, lng, serviceDuration, PlanningHorizon(0, 0, 0), TimeInterval(earliestService, latestService), prio, set(skillsReq), profitForcast)
             listOfServiceStops.append(newServiceStop)
             nodeIndex+=1
             j+=1
@@ -258,14 +258,13 @@ class Problem:
             j = 0
             while(j < len(self._demand)):
                 if i <=j:
-                    twDistance = tansiniDTW(self._demand[i], self._demand[j])
+                    twDistance = Construction.tansiniDTW(self._demand[i], self._demand[j])
                     if twDistance > max:
                         max = twDistance
                 j+=1
             i+=1
         return max
 
-    # /ENHANCEMENT/: Draw legend for colors dependend on priority.
     def plot(self):
         G = nx.DiGraph(directed=True)
         colors = []

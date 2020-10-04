@@ -3,7 +3,9 @@ class PlanningHorizon:
         self._arrivalTime = arrivalTime
         self._departureTime = departureTime
         self._waitingTime = waitingTime
+        # A lunchbreak was taken before departure
         self._departureIncludesBreak = False
+        # A lunchbreak was taken during travel to the next Node
         self._travelIncludesBreak = False
 
     

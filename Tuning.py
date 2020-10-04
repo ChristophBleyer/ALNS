@@ -1,6 +1,7 @@
 import numpy as np
-from alns.Problem import Problem
-import alns.TVRPAlgorithms as tvrp
+from technician_planning import Problem
+from construction import Construction
+from operators import Operators
 from alns.ALNS import ALNS
 from alns.criteria import HillClimbing, SimulatedAnnealing, RecordToRecordTravel, ThresholdAcceptance
 
@@ -22,20 +23,20 @@ def calibrate(numIterations):
 
     its = 0
 
-    p1 = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Data_1.csv", "/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Matrix_1.json")
-    p2 = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Data_2.csv", "/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Matrix_2.json")
-    p3 = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Data_3.csv", "/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Matrix_3.json")
-    p4 = Problem("/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Data_4.csv", "/Users/christophbleyer/Technician-Vehicle-Routing-Optimization/examples/Datasets/Matrix_4.json")
+    p1 = Problem.Problem("examples/Datasets/Data_1.csv", "examples/Datasets/Matrix_1.json")
+    p2 = Problem.Problem("examples/Datasets/Data_2.csv", "examples/Datasets/Matrix_2.json")
+    p3 = Problem.Problem("examples/Datasets/Data_3.csv", "examples/Datasets/Matrix_3.json")
+    p4 = Problem.Problem("examples/Datasets/Data_4.csv", "examples/Datasets/Matrix_4.json")
 
-    clustered1 = tvrp.parallelUrgencyAssignment(p1)
-    clustered2 = tvrp.parallelUrgencyAssignment(p2)
-    clustered3 = tvrp.parallelUrgencyAssignment(p3)
-    clustered4 = tvrp.parallelUrgencyAssignment(p4)
+    clustered1 = Construction.parallelUrgencyAssignment(p1)
+    clustered2 = Construction.parallelUrgencyAssignment(p2)
+    clustered3 = Construction.parallelUrgencyAssignment(p3)
+    clustered4 = Construction.parallelUrgencyAssignment(p4)
 
-    tvrp.buildSolutionParallelStyle(clustered1)
-    tvrp.buildSolutionParallelStyle(clustered2)
-    tvrp.buildSolutionParallelStyle(clustered3)
-    tvrp.buildSolutionParallelStyle(clustered4)
+    Construction.buildSolutionParallelStyle(clustered1)
+    Construction.buildSolutionParallelStyle(clustered2)
+    Construction.buildSolutionParallelStyle(clustered3)
+    Construction.buildSolutionParallelStyle(clustered4)
 
     # the instances we use as a starting point for paramter tuning
     instances = [clustered1, clustered2, clustered3, clustered4]
@@ -60,11 +61,11 @@ def calibrate(numIterations):
                 # change the value for the current parameter - keep all the other values fixed
                 pointersToOptimalParameterSet[targetIdxToOptimize] = targetParamSetIdx
 
-                tvrp.destructionRange = optimizationSpace[0][pointersToOptimalParameterSet[0]] 
-                tvrp.degreeOfDiversification = optimizationSpace[1][pointersToOptimalParameterSet[1]]
-                tvrp.worstRemovalWeights = optimizationSpace[2][pointersToOptimalParameterSet[2]]
-                tvrp.holdingListRemoval = optimizationSpace[3][pointersToOptimalParameterSet[3]]
-                tvrp.relatednessWeights = optimizationSpace[4][pointersToOptimalParameterSet[4]]
+                Operators.destructionRange = optimizationSpace[0][pointersToOptimalParameterSet[0]] 
+                Operators.degreeOfDiversification = optimizationSpace[1][pointersToOptimalParameterSet[1]]
+                Operators.worstRemovalWeights = optimizationSpace[2][pointersToOptimalParameterSet[2]]
+                Operators.holdingListRemoval = optimizationSpace[3][pointersToOptimalParameterSet[3]]
+                Operators.relatednessWeights = optimizationSpace[4][pointersToOptimalParameterSet[4]]
 
                 objectiveScoresCurrentSetting = []
                 # run the configuration on all instances 3 times
@@ -75,12 +76,12 @@ def calibrate(numIterations):
 
                         # run the alns algorithm
                         alns = ALNS()
-                        alns.add_destroy_operator(tvrp.randomRemoval)
-                        alns.add_destroy_operator(tvrp.distancedBasedWorstRemoval)
-                        alns.add_destroy_operator(tvrp.timeBasedWorstRemoval)
-                        alns.add_destroy_operator(tvrp.relatedRemoval)
-                        alns.add_repair_operator(tvrp.greedyInsertion)
-                        alns.add_repair_operator(tvrp.k_regretInsertion)
+                        alns.add_destroy_operator(Operators.randomRemoval)
+                        alns.add_destroy_operator(Operators.distancedBasedWorstRemoval)
+                        alns.add_destroy_operator(Operators.timeBasedWorstRemoval)
+                        alns.add_destroy_operator(Operators.relatedRemoval)
+                        alns.add_repair_operator(Operators.greedyInsertion)
+                        alns.add_repair_operator(Operators.k_regretInsertion)
                         criterion = RecordToRecordTravel(optimizationSpace[7][pointersToOptimalParameterSet[7]], 0.00000000000001, optimizationSpace[7][pointersToOptimalParameterSet[7]]/1000, method = "linear")
 
                         result = None
