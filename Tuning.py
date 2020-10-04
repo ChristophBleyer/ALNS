@@ -5,6 +5,12 @@ from operators import Operators
 from alns.ALNS import ALNS
 from alns.criteria import HillClimbing, SimulatedAnnealing, RecordToRecordTravel, ThresholdAcceptance
 
+'''
+Parameter Tuning Algorithm for the ALNS Metaheuristic. Implemented as defined in:
+"Pisinger, David and Ropke, Stefan. An Adaptive Large Neighborhood Search Heuristic for the Pickup and Delivery Problem with Time Windows. 
+Transportation Science, pages 455–472, 11 2006."
+'''
+
 # the parameter sets to tune
 DEGREE_OF_DESTRUCTION = [[0.2, 0.4], [0.3, 0.5], [0.4, 0.6]]
 DEGREE_OF_DIVERSIFICATION = [6,3,12]

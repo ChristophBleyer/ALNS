@@ -29,7 +29,7 @@ class Solution:
         requestCoverageCost = 0
 
         for cust in self.unassignedRequests:
-                requestCoverageCost+= self.problem.prioCostFactor[cust.priority] * cust.profitForcast
+                requestCoverageCost+= cust.profitForcast
 
         return requestCoverageCost
 
@@ -45,7 +45,7 @@ class Solution:
     def calculateDeployedFleetCost(self):
         deployedFleetCost = 0
         
-        # if a there is no ServiceStop in the route the vehicle is not deployed
+        # if there is no ServiceStop in the route the vehicle is not deployed
         for route in self.routes:
             if(len(route.stops) > 0):
                 deployedFleetCost+=1

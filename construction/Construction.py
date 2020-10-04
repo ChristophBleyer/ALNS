@@ -1,7 +1,5 @@
 import numpy as np
 import networkx as nx
-import copy
-import random
 import matplotlib.pyplot as plt
 from technician_planning.Solution import Solution
 from technician_planning.Route import Route
@@ -108,7 +106,7 @@ def _isAssignable(customer, depot, problem):
 
 def _calculateTemporalClusterWorkDemand(depot, problem, customer):
 
-    avgTravelTime = _calculateAvgTravelTime(depot, customer, problem)
+    avgTravelTime = _calculateMedianTravelTime(depot, customer, problem)
     temporalClusterWorkDemand = 0
 
     # estimation of time effort to serve every customer
@@ -157,7 +155,10 @@ def _calculateMedianTravelTime(depot, customer, problem):
     return np.median(travelTimes)
 
 
-
+'''
+Parallel Urgency Assignment implemented as defined in the paper:
+"Tansini, Libertad and Urquhart, María and Viera, Omar. Comparing Assignment Algorithms for the Multi-Depot VRP. 12 2002."
+'''
 def parallelUrgencyAssignment(problem, plotClusters = False):
 
     depotsWithUnsatisfiedDemand = list(problem.depots)
@@ -233,7 +234,6 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
 
         colors = []
         edgeColors = []
-        labels = {}
         for depot in problem.depots:
             G.add_node(depot.index, pos=(depot.lng, depot.lat))
             colors.append('blue')
@@ -242,12 +242,7 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
         for stop in problem.demand:
             edgeColors.append('blue')
             G.add_node(stop.index, pos=(stop.lng, stop.lat))
-            if(stop.priority == 1.0):
-                 colors.append('orange')
-            elif (stop.priority == 2.0):
-                colors.append('orange')
-            else:
-                colors.append('orange')
+            colors.append('orange')
         
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
 
@@ -263,7 +258,11 @@ def parallelUrgencyAssignment(problem, plotClusters = False):
     
     return clusteredSolution
 
-
+'''
+Parallel Route Building Algorithm implemented as defined in the paper:
+"Potvin, Jean-Yves and Rousseau, Jean-Marc. A Parallel Route Building Algorithm for the Vehicle Routing and Scheduling Problem with Time Windows.
+ European Journal of Operational Research, 66(3):331–340, 1993."
+'''
 def buildSolutionParallelStyle(solution):
     
     problem = solution.problem
@@ -338,7 +337,7 @@ def buildSolutionParallelStyle(solution):
                     if(cheapestCostForRoute[route][1] < allOvercheapestPlaceCost[1]):
                         allOvercheapestPlaceCost = cheapestCostForRoute[route]
                 
-                # the customers that cannot be inserted anywhere they are removed from the depots cluster cache and driven into the solutions holding list.
+                # the customers that cannot be inserted anywhere are removed from the depots cluster cache and driven into the solutions holding list.
                 if (allOvercheapestPlaceCost[1] == np.Infinity):
                     del unroutedCustomers[unroutedCustomers.index(unroutedCust)]
                     toDelete.append(unroutedCust)
@@ -374,11 +373,6 @@ def buildSolutionParallelStyle(solution):
                 
                 if(regret[unroutedCust] < 0):
                     raise Exception("impossible system state")
-                
-                # Increase the regret by the customers priority
-                regret[unroutedCust]*=unroutedCust.priority
-
-            
             
             # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest regret.
             maxLossCustomer = max(insertLoss, key=insertLoss.get)

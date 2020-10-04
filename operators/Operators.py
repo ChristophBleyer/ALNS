@@ -95,7 +95,7 @@ def greedyInsertion(current, random_state):
                             cost = np.Infinity
 
                             if(route.isAssignable(unroutedCust, insertAt, metadata)):
-                                cost = metadata["overtimeCost"] + metadata["distanceTraveledCost"] - (current.problem.prioCostFactor[unroutedCust.priority] *  unroutedCust.profitForcast)
+                                cost = metadata["overtimeCost"] + metadata["distanceTraveledCost"] - unroutedCust.profitForcast
 
                             
                             insertionCostForRoute.append(cost)
@@ -296,10 +296,9 @@ def k_regretInsertion(current, random_state):
                 if(regret[cust] == 0.0):
                     lastRoute = True
                 elif(lastRoute and regret[cust] != 0.0):
-                    print(maxLossCustomers)
                     raise Exception("impossible system state")
 
-                addedRegretForCust = regret[cust] + (current.problem.prioCostFactor[cust.priority] * cust.profitForcast)
+                addedRegretForCust = regret[cust] + cust.profitForcast
                 addedRegretOnSameLossLevel[cust] = addedRegretForCust
             
             if(not lastRoute):

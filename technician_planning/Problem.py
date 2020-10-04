@@ -1,4 +1,4 @@
-re·struc·tur·ingimport numpy as np
+import numpy as np
 import pandas
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -33,7 +33,6 @@ class Problem:
         self._maxTimeWindowLength =  self.calculateMaxTimeWindowLength()
         self._maxServiceTime = self.calculateMaxServiceTime()
         self._avgDrivingCost = 0.0001
-        self._prioCostFactor = {1.0: 1.0, 2.0: 2.0, 3.0: 3.0}
 
     
     @property
@@ -88,10 +87,6 @@ class Problem:
     @property
     def maxTimeWindowDistance(self):
         return self._maxTimeWindowDistance
-    
-    @property
-    def prioCostFactor(self):
-        return self._prioCostFactor
     
     @property
     def avgDrivingCost(self):
@@ -178,7 +173,6 @@ class Problem:
                 i+=1
                 column+=1
             
-            prio = stopDataRow[column]
             lat = stopDataRow[column + 1]
             lng = stopDataRow[column + 2]
             serviceDuration = stopDataRow[column + 3]
@@ -186,7 +180,7 @@ class Problem:
             latestService = stopDataRow[column + 5]
             profitForcast = stopDataRow[column + 6]
             row+=1
-            newServiceStop = ServiceStop(nodeIndex, lat, lng, serviceDuration, PlanningHorizon(0, 0, 0), TimeInterval(earliestService, latestService), prio, set(skillsReq), profitForcast)
+            newServiceStop = ServiceStop(nodeIndex, lat, lng, serviceDuration, PlanningHorizon(0, 0, 0), TimeInterval(earliestService, latestService), set(skillsReq), profitForcast)
             listOfServiceStops.append(newServiceStop)
             nodeIndex+=1
             j+=1
@@ -275,12 +269,7 @@ class Problem:
         
         for stop in self._demand:
             G.add_node(stop.index, pos=(stop.lng, stop.lat))
-            if(stop.priority == 1.0):
-                 colors.append('orange')
-            elif (stop.priority == 2.0):
-                colors.append('orange')
-            else:
-                colors.append('orange')
+            colors.append('orange')
         
         nx.draw(G, nx.get_node_attributes(G, 'pos'), node_color=colors, with_labels=True)
         return G
