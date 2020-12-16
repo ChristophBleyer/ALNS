@@ -12,3 +12,13 @@ The initial route construction is done in two phases *clustering* and *routing*.
 
 * Clustering is done by a parallel urgency assignment as described in *Tansini, Libertad and Urquhart, María and Viera, Omar. Comparing Assignment Algorithms for the Multi-Depot VRP. 12 2002.*
 * Routing is done via a parallel route building algorithm as described in *Potvin, Jean-Yves and Rousseau, Jean-Marc. A Parallel Route Building Algorithm for the Vehicle Routing and Scheduling Problem with Time Windows. European Journal of Operational Research, 66(3):331–340, 1993*
+
+### Build the image
+
+In the root directory run `docker build -t alns .`
+
+Start a container `docker run -p 8888:8888 alns`
+
+Copy the security token from the command line and use it login on http://localhost:8888/tree. 
+
+Example notebooks on how to use the optimization can be found in the `examples` folder.
