@@ -374,7 +374,7 @@ def buildSolutionParallelStyle(solution):
                         regret[unroutedCust]+= costsForRoute[1] - bestFitPerCust[unroutedCust][1]
                 
                 if(regret[unroutedCust] < 0):
-                    raise Exception("impossible system state")
+                    raise Exception("The regret can not be negative.")
             
             # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest regret.
             maxLossCustomer = max(insertLoss, key=insertLoss.get)
@@ -412,4 +412,4 @@ def buildSolutionParallelStyle(solution):
             changedRoute = targetRoute
 
             if(not success):
-                raise Exception("impossible system state")
+                raise Exception("The selected customer should always be insertable.")

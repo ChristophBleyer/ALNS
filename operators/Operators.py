@@ -39,9 +39,6 @@ def randomRemoval(current, random_state):
     # elements are also removed from the holding vector to drive them back into the solution space
     combinedSearchSpace = destroyed.unassignedRequests + solutionSpace
 
-    if(len(combinedSearchSpace) != len(current.problem.demand) or len(combinedSearchSpace) != len(destroyed.problem.demand)):
-        raise Exception("impossible system state")
-
     random_state.shuffle(combinedSearchSpace)
 
     destructionDegree = determineDegreeOfDestruction(destroyed.problem)
@@ -56,7 +53,7 @@ def randomRemoval(current, random_state):
             el = destroyed.unassignedRequests.pop(destroyed.unassignedRequests.index(target))
             destroyed.removalCache.append(el)
         else:
-            raise Exception("impossible system state")
+            raise Exception("The target can not be located.")
     
 
     for targetRoute in targetsPerRoute:
@@ -67,7 +64,7 @@ def randomRemoval(current, random_state):
 
     
     if(len(destroyed.removalCache) != destructionDegree):
-        raise Exception("impossible system state")
+        raise Exception("The size of the removal cache should fit the degree of destruction.")
 
     return destroyed
 
@@ -153,7 +150,7 @@ def greedyInsertion(current, random_state):
             if(not cheapestCostsPerCust):
 
                 if(current.removalCache):
-                    raise Exception("impossible system state")
+                    raise Exception("The removal cache should be empty.")
                 
                 return current
             
@@ -173,7 +170,7 @@ def greedyInsertion(current, random_state):
             changedRoute = targetRoute
 
             if(not success):
-                raise Exception("impossible system state")
+                raise Exception("The selected service stop should always be insertable.")
     
     return current
 
@@ -258,7 +255,7 @@ def k_regretInsertion(current, random_state):
             if(not cheapestCostsPerCust):
 
                 if(current.removalCache):
-                    raise Exception("impossible system state")
+                    raise Exception("The removal cache should be empty.")
                 
                 return current
             
@@ -283,7 +280,7 @@ def k_regretInsertion(current, random_state):
                         regret[unroutedCust]+= costsForRoute[1] - bestFitPerCust[unroutedCust][1]
                 
                 if(regret[unroutedCust] < 0):
-                    raise Exception("impossible system state")
+                    raise Exception("The regret can not be negative.")
 
             # the customer that is inserted is one with the biggest loss. For all customers that have the same loss we insert the one with the biggest added regret that is the regret plus the cost for not inserting that customer
             maxLossCustomer = max(insertLoss, key=insertLoss.get)
@@ -301,7 +298,7 @@ def k_regretInsertion(current, random_state):
                 if(regret[cust] == 0.0):
                     lastRoute = True
                 elif(lastRoute and regret[cust] != 0.0):
-                    raise Exception("impossible system state")
+                    raise Exception("Impossible system state.")
 
                 addedRegretForCust = regret[cust] + cust.profitForcast
                 addedRegretOnSameLossLevel[cust] = addedRegretForCust
@@ -330,10 +327,7 @@ def k_regretInsertion(current, random_state):
             changedRoute = targetRoute
 
             if(not success):
-                print(len(removalCacheNotEmpty))
-                print(len(cheapestCostsPerCust))
-                print(lastRoute)
-                raise Exception("impossible system state")
+                raise Exception("The selected service stop should always be insertable.")
     
     return current
 
@@ -404,9 +398,6 @@ def distancedBasedWorstRemoval(current, random_state):
             changedRoute = targetRoute
     
         removed+=1
-    
-    if(len(destroyed.removalCache) != destructionDegree):
-        raise Exception("Impossible system state")
 
     return destroyed
 
@@ -479,9 +470,6 @@ def timeBasedWorstRemoval(current, random_state):
             changedRoute = targetRoute
     
         removed+=1
-    
-    if(len(destroyed.removalCache) != destructionDegree):
-        raise Exception("Impossible system state")
 
     return destroyed
 
@@ -499,9 +487,6 @@ def relatedness(stopA, stopB, problem):
     vehicleAffinityScore = 1 - ( len(list(set(problem.serviceMap[stopA.index]).intersection(problem.serviceMap[stopB.index]))) / (min([len(problem.serviceMap[stopA.index]), len(problem.serviceMap[stopB.index])])) )
 
     relatedness = relatednessWeights[0] * travelTimeScore + relatednessWeights[1] * (timeWindowStartScore + timeWindowLengthScore + serviceDurationScore) + relatednessWeights[2] * vehicleAffinityScore
-
-    if(not (0 <= relatedness <= relatednessWeights[0] + 3 * relatednessWeights[1] + vehicleAffinityScore)):
-        raise Exception("impossible system state")
 
     return relatedness
 
@@ -527,9 +512,6 @@ def relatedRemoval(current, random_state):
 
     # elements are also removed from the holding vector to drive them back into the solution space
     combinedSearchSpace = destroyed.unassignedRequests + solutionSpace
-
-    if(len(combinedSearchSpace) != len(current.problem.demand) or len(combinedSearchSpace) != len(destroyed.problem.demand)):
-        raise Exception("impossible system state")
 
     random_state.shuffle(combinedSearchSpace)
 
@@ -572,7 +554,7 @@ def relatedRemoval(current, random_state):
             el = destroyed.unassignedRequests.pop(destroyed.unassignedRequests.index(target))
             destroyed.removalCache.append(el)
         else:
-            raise Exception("impossible system state")
+            raise Exception("The target can not be located.")
     
 
     for targetRoute in targetsPerRoute:
@@ -580,11 +562,6 @@ def relatedRemoval(current, random_state):
             removed = targetRoute.removeServiceStops(targetsPerRoute[targetRoute])
             for el in removed:
                 destroyed.removalCache.append(el)
-
-    
-    if(len(destroyed.removalCache) != destructionDegree):
-        raise Exception("impossible system state")
-
     
     return destroyed
 

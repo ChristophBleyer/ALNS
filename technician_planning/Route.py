@@ -277,8 +277,6 @@ class Route:
         
     
     def tryUpdateOnLunchInsertion(self, prototype, additionalStay, additionalDrive, injectAt):
-        if(additionalStay != -1 and additionalDrive != -1):
-            raise Exception("Impossible system state")
 
         trialPlan = copy.deepcopy(prototype)
 
@@ -424,9 +422,8 @@ class Route:
 
             current.schedule.arrivalTime = predeccesor.schedule.departureTime + self.problem.timeMatrix[predeccesor.index, current.index]
             
-            # we can never be too late asssuming triangle inequality across the problem space.
             if (current.schedule.arrivalTime > current.serviceTime.latest):
-                raise Exception("impossible system state")
+                raise Exception("We can never be too late asssuming triangle inequality across the problem space")
 
             # ... but if it does, do we have to wait here?
             if (current.schedule.arrivalTime < current.serviceTime.earliest):
@@ -449,11 +446,8 @@ class Route:
             isPossible = True
             pauseInjectedPrototype = self._stops
 
-        # with less time on the field a pause is insertable no matter what
         if(not isPossible):
-            print(lunchDetected)
-            print(index)
-            raise Exception("impossible system state")
+            raise Exception("With less time in the field a pause is insertable no matter what")
 
         self._stops = pauseInjectedPrototype
 
@@ -545,9 +539,6 @@ class Route:
 
                 introducedDelay = 0
 
-                if(serviceAtSuccWithoutTarget > succ.serviceTime.earliest):
-                    raise Exception("impossible system state")
-
             # if he had to wait before we see only the difference with the earliest start as the delay
             elif (serviceAtSuccWithoutTarget <= succ.serviceTime.earliest):
                 introducedDelay = currentServiceAtSucc - succ.serviceTime.earliest
@@ -555,7 +546,7 @@ class Route:
                 introducedDelay = currentServiceAtSucc - serviceAtSuccWithoutTarget
             
         if(introducedDelay < 0 ):
-            raise Exception("impossible system state")
+            raise Exception("The delay can not be negative.")
     
         return  [detour, introducedDelay]
 
@@ -599,7 +590,7 @@ class Route:
         cost = predToNew + newToSucc - predToSucc
 
         if(cost < 0):
-            raise Exception("impossible system state")
+            raise Exception("A negative cost is impossible")
 
         return cost
     
@@ -644,7 +635,7 @@ class Route:
             introducedDelay = shiftedSuccArrival - currentServiceAtSucc
 
         if(introducedDelay < 0 ):
-            raise Exception("impossible system state")
+            raise Exception("A negative delay is not possible.")
 
         return introducedDelay
 
