@@ -90,17 +90,12 @@ def calibrate(numIterations):
                         alns.add_repair_operator(Operators.k_regretInsertion)
                         criterion = RecordToRecordTravel(optimizationSpace[7][pointersToOptimalParameterSet[7]], 0.00000000000001, optimizationSpace[7][pointersToOptimalParameterSet[7]]/1000, method = "linear")
 
-                        result = None
-                        while result is None:
-                            try:
-                                result = alns.iterate(instance, optimizationSpace[6][pointersToOptimalParameterSet[6]], optimizationSpace[5][pointersToOptimalParameterSet[5]], criterion, iterations=1000, collect_stats=True)
-                            except ...:
-                                print("Something went wrong.")
+                        result = alns.iterate(instance, optimizationSpace[6][pointersToOptimalParameterSet[6]], optimizationSpace[5][pointersToOptimalParameterSet[5]], criterion, iterations=1000, collect_stats=True)
                         
                         optimized = result.best_state
                         objective = optimized.objective()
                         objectiveScoresCurrentSetting.append(objective)
-                    
+                                        
                         l+=1
             
                 # after running the configuration on all instances 3 times we compute the average performance. That performance is then saved to all the results from the other paremter settings

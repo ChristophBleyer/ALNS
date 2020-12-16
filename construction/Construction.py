@@ -1,3 +1,7 @@
+'''
+This module contains functionalities for route construction.
+'''
+
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -31,8 +35,6 @@ def tansiniDTW(nodei, nodej):
         return nodei.serviceTime.earliest - nodej.serviceTime.latest
     else:
         return 0
-
-
 
 def _urgency(customer, firstDep, secDep, problem):
 

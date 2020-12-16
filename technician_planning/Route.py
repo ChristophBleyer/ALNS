@@ -452,7 +452,6 @@ class Route:
         # with less time on the field a pause is insertable no matter what
         if(not isPossible):
             print(lunchDetected)
-            self.stateLog()
             print(index)
             raise Exception("impossible system state")
 
@@ -648,19 +647,6 @@ class Route:
             raise Exception("impossible system state")
 
         return introducedDelay
-
-    
-    def stateLog(self, onInstance = None):
-
-        if(onInstance is None):
-            onInstance = self.stops
-
-        print("DEPOPT DEPARTURE: " + str(self.depot.schedule.departureTime) + "\nDEPOPT ARRIVAL: " + str(self.depot.schedule.arrivalTime))
-        print("DEPOT BREAK ON DEPARTURE: ", str(self.depot.schedule.departureIncludesBreak))
-        print("DEPOT BREAK ON TRAVEL: ", str(self.depot.schedule.travelIncludesBreak))
-        print("\nSTOPS: ")
-        for stop in onInstance:
-            print("\n Index: " + str(stop.index) +  " Earliest : " + str(stop.serviceTime.earliest) + " Latest: " + str(stop.serviceTime.latest) + " Arrival: " + str(stop.schedule.arrivalTime) + " Departure: " + str(stop.schedule.departureTime) + " Pause: " + str(stop.schedule.waitingTime) + " Work for: " + str(stop.serviceDuration) +  " Departure Beak: " + str(stop.schedule.departureIncludesBreak) + " Travel Beak: " + str(stop.schedule.travelIncludesBreak))
 
     
 
