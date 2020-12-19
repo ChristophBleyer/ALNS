@@ -1,5 +1,5 @@
 '''
-This module contains the operators for the ALNS algorithm. Al mathematical interpretation of these operators can be found in:
+This module contains the operators for the ALNS algorithm. A mathematical interpretation of these operators can be found in:
 Pisinger, David and Ropke, Stefan. Large Neighborhood Search. Handbook of Metaheuristics, pages 399–419, 09 2010
 '''
 
