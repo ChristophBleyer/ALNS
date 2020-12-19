@@ -13,6 +13,8 @@ The initial route construction is done in two phases: *clustering* and *routing*
 * Clustering is done by a parallel urgency assignment as described in *Tansini, Libertad and Urquhart, María and Viera, Omar. Comparing Assignment Algorithms for the Multi-Depot VRP. 12 2002.*
 * Routing is done via a parallel route building algorithm as described in *Potvin, Jean-Yves and Rousseau, Jean-Marc. A Parallel Route Building Algorithm for the Vehicle Routing and Scheduling Problem with Time Windows. European Journal of Operational Research, 66(3):331–340, 1993*
 
+After constructing the initial solution the ALNS algorithm can be used with various acceptance criteria. (See the notebooks in the `examples` folder)
+
 ## Run a Docker Container for development
 
 In the root directory run `docker build -t alns .`
