@@ -36,7 +36,6 @@ result.plot_objectives(ax=ax, lw=2)
 ```
 ![](docs/rrt_example.png)
 
-
 ```
 figure = plt.figure("operator_counts", figsize=(14, 6))
 figure.subplots_adjust(bottom=0.15, hspace=.5)
